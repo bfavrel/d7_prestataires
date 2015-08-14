@@ -1,0 +1,1577 @@
+<?php
+
+define('PDISPOS_UNDEFINED', 0);                             // non-renseigné (par défaut)
+define('PDISPOS_UNDEFINED_LABEL', t("No information has been set"));
+define('PDISPOS_UNDEFINED_LEGEND', t("not set"));
+define('PDISPOS_UNDEFINED_CLASS', 'pdispos_undefined');
+
+define('PDISPOS_FREE', 1);                                  // libre
+define('PDISPOS_FREE_LABEL', t("All products are available"));
+define('PDISPOS_FREE_LEGEND', t("free"));
+define('PDISPOS_FREE_CLASS', 'pdispos_free');
+
+define('PDISPOS_SOME', 2);                                  // des dispos restantes
+define('PDISPOS_SOME_LABEL', t("It remains some products available"));
+define('PDISPOS_SOME_LEGEND', t("some availabilities"));
+define('PDISPOS_SOME_CLASS', 'pdispos_some');
+
+define('PDISPOS_FULL', 3);                                  // complet
+define('PDISPOS_FULL_LABEL', t("No product is available anymore"));
+define('PDISPOS_FULL_LEGEND', t("full"));
+define('PDISPOS_FULL_CLASS', 'pdispos_full');
+
+define('PDISPOS_CLOSED', 4);                                // fermé
+define('PDISPOS_CLOSED_LABEL', t("Business is closed"));
+define('PDISPOS_CLOSED_LEGEND', t("closed"));
+define('PDISPOS_CLOSED_CLASS', 'pdispos_closed');
+
+function _prestataires_dispos_get_constants_by_value($value = null) {
+    $constants = array(
+        0 => array(
+            'constant' => 'PDISPOS_UNDEFINED',
+            'label' => PDISPOS_UNDEFINED_LABEL,
+            'legend' => PDISPOS_UNDEFINED_LEGEND,
+            'class' => PDISPOS_UNDEFINED_CLASS,
+        ),
+        1 => array(
+            'constant' => 'PDISPOS_FREE',
+            'label' => PDISPOS_FREE_LABEL,
+            'legend' => PDISPOS_FREE_LEGEND,
+            'class' => PDISPOS_FREE_CLASS,
+        ),
+        2 => array(
+            'constant' => 'PDISPOS_SOME',
+            'label' => PDISPOS_SOME_LABEL,
+            'legend' => PDISPOS_SOME_LEGEND,
+            'class' => PDISPOS_SOME_CLASS,
+        ),
+        3 => array(
+            'constant' => 'PDISPOS_FULL',
+            'label' => PDISPOS_FULL_LABEL,
+            'legend' => PDISPOS_FULL_LEGEND,
+            'class' => PDISPOS_FULL_CLASS,
+        ),
+        4 => array(
+            'constant' => 'PDISPOS_CLOSED',
+            'label' => PDISPOS_CLOSED_LABEL,
+            'legend' => PDISPOS_CLOSED_LEGEND,
+            'class' => PDISPOS_CLOSED_CLASS,
+        ),
+    );
+
+    if($value !== null) {
+        return $constants[$value];
+    }
+
+    return $constants;
+}
+
+function prestataires_dispos_prestataires_infos() {
+    return array(
+        'dispos' => array(
+            'label' => t("Availabilities"),
+            'group' => 'nodes',
+            'filter_callback' => 'prestataires_dispos_prestataires_filter_callback',
+        ),
+    );
+}
+
+function prestataires_dispos_prestataires_filter_callback($nid, $uid) {
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+
+    $node_type = db_query("SELECT type FROM {node} WHERE nid=?", array($nid))->fetchColumn();
+
+    // pas de node type = pas de node tout court
+    if($node_type != null && array_key_exists($node_type, $settings['nodes_types'])) {return true;}
+
+    return false;
+}
+
+function prestataires_dispos_menu() {
+    $items = array();
+
+    // ----- MODULE'S SETTINGS -----
+
+    $items['admin/config/prestataires/settings/dispos'] = array(
+        'title' => "Prestataires Dispos",
+        'type' => MENU_LOCAL_TASK,
+        'page callback' => 'prestataires_dispos_settings',
+        'file' => 'prestataires_dispos.admin.inc',
+        'access arguments' => array('configure prestataires'),
+        'weight' => 1,
+    );
+
+    $items['admin/config/prestataires/settings/dispos/%/delete'] = array( // node type
+        'title' => "Prestataires dispos",
+        'type' => MENU_CALLBACK,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('prestataires_dispos_nodes_types_settings_delete_confirm', 5), // node type
+        'file' => 'prestataires_dispos.admin.inc',
+        'access arguments' => array('configure prestataires'),
+    );
+
+    // ----- NODE DISPOS TAB -----
+
+    $items['node/%node/dispos'] = array(
+        'title' => 'Availabilites',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('prestataires_dispos_node_form', 1),
+        'access callback' => 'prestataires_dispos_node_perms',
+        'access arguments' => array(1),
+        'type' => MENU_LOCAL_TASK,
+        'weight' => 4,
+    );
+
+    // ----- NODE DISPOS AJAX INFOS -----
+
+    // dispos tab
+    $items['dispos/ajax/infos/%node/%/%'] = array( // mode : 'edit' ou 'page' / date
+        'title' => '',
+        'page callback' => 'prestataires_dispos_ajax_infos',
+        'page arguments' => array(3, 4, 5),
+        'access callback' => 'prestataires_dispos_ajax_infos_perms',
+        'access arguments' => array(3, 4),
+        'type' => MENU_CALLBACK,
+    );
+
+    return $items;
+}
+
+function prestataires_dispos_node_perms($node) {
+
+    global $user;
+
+    if($user->uid == 0) {return false;} // anonymous
+
+    $trusted = user_access('administer prestataires') == true || user_access('configure prestataires') == true; // l'administrateur du module et l'admin
+
+    $node_infos = prestataires_get_node_definition(
+        $node->nid,
+        $trusted == true ? null : $user->uid    // prestataire user
+    );
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+    if(!array_key_exists($node->type, $settings['nodes_types'])) {return false;}
+
+    if($node_infos == false || !array_key_exists('dispos@prestataires_dispos', (array)$node_infos->params['functionalities'])
+            || $node_infos->params['functionalities']['dispos@prestataires_dispos'] != 1) {
+        return false;
+    }
+
+    return true;
+}
+
+function prestataires_dispos_ajax_infos_perms($node, $mode) {
+
+    if($mode == 'admin') {
+        return prestataires_dispos_node_perms($node);
+    }
+
+    return user_access('access content');
+}
+
+function prestataires_dispos_cron() {
+
+    // 1 - les {prestataires_dispos} dont le end_timestamp est dépassé doivent être supprimés
+    db_query("DELETE FROM prestataires_dispos WHERE end_timestamp<UNIX_TIMESTAMP()");
+
+    // 2 - les {prestataires_dispos_products} dont l'info_id ne correspond plus à rien dans {prestataires_dispos} doivent être supprimés
+    db_query("DELETE pdp FROM prestataires_dispos_products AS pdp LEFT JOIN prestataires_dispos AS pd ON pd.infos_id=pdp.infos_id WHERE pd.infos_id IS NULL");
+}
+
+/*
+ * Implementation of hook_trigger_info()
+ */
+function prestataires_dispos_trigger_info() {
+    return array(
+        'prestataires_dispos' => array(
+            'pdispos_form_submitted' => array(
+                'label' => t("After dispos form submission"),
+            ),
+        ),
+    );
+}
+
+function prestataires_dispos_trigger_pdispos_form_submitted($node) {
+
+    $actions = trigger_get_assigned_actions('pdispos_form_submitted');
+
+    $context = array(
+        'group' => 'prestataires_dispos',
+        'hook' => 'pdispos_form_submitted'
+    );
+
+    actions_do(array_keys($actions), $node, $context);
+}
+
+function prestataires_dispos_node_form($form, &$form_state, $node, $date = '') {
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+
+    $module_path = drupal_get_path('module', 'prestataires_dispos');
+
+    if(!empty($date)) {
+        $time = DateTime::createFromFormat('Y-m-d H:i:s', $date . '00:00:00');
+
+        $dispo_type = db_query(
+            "SELECT dispo_type FROM {prestataires_dispos}
+             WHERE nid=:nid
+             AND (start_timestamp<=:time AND end_timestamp>=:time)",
+            array(
+                ':nid' => $node->nid,
+                ':time' => $time->format('U'),
+            )
+        )->fetchColumn();
+
+        // s'il n'y a pas encore d'enregistrement en bdd
+        if($dispo_type == false) {
+            $dispo_type = PDISPOS_UNDEFINED;
+        }
+
+    } else {
+        $dispo_type = PDISPOS_UNDEFINED;
+    }
+
+    $form = array(
+        '#tree' => true,
+
+        '#attached' => array(
+            'css' => array(
+                $module_path . '/css/prestataires_dispos.admin.css',
+            ),
+
+            'js' => array(
+                $module_path . '/scripts/datepicker.js',
+                $module_path . '/scripts/moment.min.js',
+                $module_path . '/scripts/prestataires_dispos.admin.js',
+            ),
+        ),
+
+        'calendar' => array(
+            '#type' => 'container',
+            '#array_parents' => array('calendar'),
+        ),
+        'calendar_data' => array(
+            '#prefix' => "<script type='text/javascript'>var calendarData=JSON.parse('",
+            '#markup' => prestataires_dispos_calendar_get_js_data($node->nid),
+            '#suffix' => "');</script>"
+        ),
+
+        'data' => array(
+            '#type' => 'container',
+            '#theme' => 'prestataires_dispos_node_form_data',
+
+            'nid' => array(
+                '#type' => 'value',
+                '#value' => $node->nid,
+            ),
+
+            'period' => array(
+                '#type' => 'fieldset',
+                '#title' => t("Dates"),
+
+                'date_from_display' => array(
+                    '#prefix' => t("From@date", array('@date' => null)),
+                    '#markup' => "<span id='date_from'>" . t("pick a date or a week number from calendar") . "</span>",
+                ),
+                'date_from' => array(
+                    '#type' => 'hidden',
+                ),
+
+                'date_to_display' => array(
+                    '#prefix' => t("To@date", array('@date' => null)),
+                    '#markup' => "<span id='date_to'>" . t("pick an end date from calendar") . " (" . t("optional") . ")</span>",
+                ),
+                'date_to' => array(
+                    '#type' => 'hidden',
+                ),
+
+                'advice' => array(
+                    '#markup' => "<span id='date_advice'>(" . t("Pick again a date from calendar to change the start date, etc.") . ")</span>",
+                ),
+            ),
+
+            'pin_infos' => array(
+                '#type' => 'checkbox',
+                '#title' => "<span>" . t("Pin informations to reuse them for another period") . "</span>"
+            ),
+
+            'type' => array(
+                '#type' => 'radios',
+                '#title' => t("Select a type of availability") . " : ",
+                '#options' => array(
+                    PDISPOS_UNDEFINED => PDISPOS_UNDEFINED_LEGEND,
+                    PDISPOS_FREE => PDISPOS_FREE_LEGEND,
+                    PDISPOS_SOME => PDISPOS_SOME_LEGEND,
+                    PDISPOS_FULL => PDISPOS_FULL_LEGEND,
+                    PDISPOS_CLOSED => PDISPOS_CLOSED_LEGEND,
+                ),
+                '#default_value' => $dispo_type,
+            ),
+
+            'infos' => array(
+                '#type' => 'fieldset',
+                '#title' => t("Informations"),
+
+                'form' => array(
+                    '#type' => 'so_form',
+                    '#sfid' => array(
+                        'module' => null,
+                        'id' => $settings['nodes_types'][$node->type]['form_id'],
+                    ),
+                    '#data' => array(
+                        'nid' => $node->nid,
+                        'date' => $date,
+                    ),
+
+                    '#display' => 'default',
+                ),
+            ),
+        ),
+
+        'submit' => array(
+            '#type' => 'submit',
+            '#value' => t("Save"),
+            '#attributes' => array('class' => array('submit')),
+        ),
+    );
+
+    return $form;
+}
+
+function prestataires_dispos_node_form_validate($form, &$form_state) {
+
+    if(count(array_filter($form_state['values']['data']['period'])) == 0) {
+        form_set_error('data][period', t("You have to select at least one date"));
+    }
+}
+
+function prestataires_dispos_node_form_submit($form, &$form_state) {
+
+    $raw_inputs = array();
+    $infos = array();
+    $calculated_total_capacity = 0;
+
+    $data = $form_state['values']['data'];
+
+    if($data['type'] == PDISPOS_FREE || $data['type'] == PDISPOS_SOME) {
+        $compiled_infos = so_forms_submit_element($data['infos']['form'], $raw_inputs);
+
+        $weight = 0;
+
+        // si au moins un produit est à '-1', le calcul total est n/a
+        $irrelevant_total_capacity = false;
+
+        foreach($compiled_infos as $field_secured_id => $field) {
+
+            if($field['field_type'] != 'pdispos') {continue;}
+
+            if($irrelevant_total_capacity == false && $field['configuration']['capacity'] > 0) {
+                $calculated_capacity = $field['configuration']['capacity'] * $field['values']['quantity'];
+                $calculated_total_capacity += $calculated_capacity;
+            } else {
+                $calculated_capacity =  -1;
+                $calculated_total_capacity = -1;
+                $irrelevant_total_capacity = true;
+            }
+
+            // on stocke l'ensemble des infos nécessaires à l'affichage, afin de diviser le nombre de requêtes mis en jeu.
+            $infos[] = array(
+                'field_id' => $field['field_id'],
+                'weight' => $weight++,
+                'quantity' => $field['values']['quantity'],
+                'capacity' => $calculated_capacity,
+                'comment' => $field['values']['comment'],
+                'raw_inputs' => serialize($raw_inputs[$field['field_id']]),
+            );
+        }
+    }
+
+    $period_data = array(
+        'period' => $data['period'], // array : 'date_from', 'date_to' : Y-m-d
+        'type' => $data['type'],
+        'layer' => 255, // les entrées utilisateur ont la priorité absolue
+        'capacity' => $calculated_total_capacity,
+        'infos' => $infos,
+    );
+
+    prestataires_dispos_save_periods($data['nid'], array($period_data));
+
+    prestataires_dispos_trigger_pdispos_form_submitted($form_state['build_info']['args'][0]);
+
+    $form_state['rebuild'] = $data['pin_infos'];
+}
+
+/**
+ * AJAX menu callback.
+ *
+ * @param stdClass $node
+ * @param string $mode : either 'edit' for dispos node tab or 'page' for embeded calendar
+ * @param string $date : format 'Y-m-d'
+ *
+ * return string : JSON data
+ */
+function prestataires_dispos_ajax_infos($node, $mode, $date) {
+
+    $data = array();
+
+    // on retourne le type de dispos et l'élément so_form
+    if($mode == 'edit') {
+
+        $form = drupal_get_form('prestataires_dispos_node_form', $node, $date);
+
+        $data['dispo_type'] = $form['data']['type']['#value'];
+        $data['infos'] = render($form['data']['infos']['form']);
+
+        return drupal_json_output($data);
+    }
+
+    // on ne retourne que les infos rendues en HTML
+
+    $infos = prestataires_dispos_get_dispo_infos($node->nid, null, $date);
+
+    $data = theme('prestataire_dispos_infos', array('infos' => $infos));
+
+    return drupal_json_output($data);
+}
+
+/**
+ * Provides data to feed theme_prestataire_dispos_infos()
+ *
+ * @param int $nid
+ * @param int $pdid : {prestataires_dispos}.id
+ * @param string $date : format 'Y-m-d'
+ *
+ * @return array : of strings :
+ *          - 'dates'
+ *          - 'type'
+ *          - 'updated'
+ *          - 'products'
+ */
+function prestataires_dispos_get_dispo_infos($nid, $pdid = null, $date = null) {
+
+    $infos = array(
+        'dates' => null,
+        'type' => null,
+        'updated' => null,
+        'products' => array(),
+    );
+
+    $args = array(
+        ':nid' => $nid,
+    );
+
+    if($pdid != null) {
+
+        $where = "pd.id=:pdid";
+        $args[':pdid'] = $pdid;
+
+    } elseif($date != null) {
+
+        $where = "(pd.start_timestamp<=:time AND pd.end_timestamp>=:time)";
+
+        $time = DateTime::createFromFormat('Y-m-d H:i:s', $date . '00:00:00');
+        $args[':time'] = $time->format('U');
+
+    } else {
+        return $infos;
+    }
+
+    $results = db_query(
+        "SELECT pd.dispo_updated, pd.start_timestamp, pd.end_timestamp, pd.dispo_type, pdp.sfid, pdp.quantity, pdp.comment
+         FROM {prestataires_dispos} AS pd
+         LEFT JOIN {prestataires_dispos_products} AS pdp ON pdp.infos_id=pd.infos_id
+         WHERE pd.nid=:nid AND " . $where . " " .
+         "ORDER BY pdp.weight ASC",
+        $args
+    );
+
+    while($row = $results->fetchObject()) {
+
+        if(empty($infos['dates'])) {
+            $constants = _prestataires_dispos_get_constants_by_value($row->dispo_type);
+
+            $infos['type'] = $constants['label'];
+
+            $updated = DateTime::createFromFormat('U', $row->dispo_updated);
+            $updated->setTimezone(new DateTimeZone("Europe/Paris"));
+
+            $infos['updated'] = t("Informations updated on @date at @hour", array(
+                '@date' => t($updated->format('l')) . " " . $updated->format('d/m/Y'),
+                '@hour' => $updated->format('H\hi'),
+            ));
+
+            $start_date = DateTime::createFromFormat('U', $row->start_timestamp);
+            $start_date->setTimezone(new DateTimeZone("Europe/Paris"));
+
+            if($row->start_timestamp != $row->end_timestamp) {
+
+                $end_date = DateTime::createFromFormat('U', $row->end_timestamp);
+                $end_date->setTimezone(new DateTimeZone("Europe/Paris"));
+
+                $infos['dates'] = t("From @start to @end", array(
+                    '@start' => t($start_date->format('l')) . " " . $start_date->format('d/m/Y'),
+                    '@end' => t($end_date->format('l')) . " " . $end_date->format('d/m/Y'),
+                ));
+
+                $infos['dates_timestamps'] = array(
+                    'start' => $row->start_timestamp,
+                    'end' => $row->end_timestamp,
+                );
+
+            } else {
+                $infos['dates'] = t("On @date", array('@date' => t($start_date->format('l')) . " " . $start_date->format('d/m/Y')));
+
+                $infos['dates_timestamps'] = array(
+                    'start' => $row->start_timestamp,
+                    'end' => $row->start_timestamp,
+                );
+            }
+        }
+
+        $field_infos = so_forms_get_stored_field($row->sfid);
+
+        if(empty($field_infos)) {continue;}
+
+        $label = t($field_infos->label) .
+                ($field_infos->params['configuration']['module_custom']['display_capacity'] == true ? " (" . format_plural(
+                    $field_infos->params['configuration']['module_custom']['capacity'],
+                    "for 1 people",
+                    "for @count people"
+                ) . ")" : "");
+
+        $infos['products'][] = array(
+            'label' => $label,
+            'quantity' => $row->quantity,
+            'comment' => $row->comment,
+        );
+    }
+
+    return $infos;
+}
+
+/**
+ * Populate so_forms' form.
+ *
+ * @param string $id : so_forms'is in module context
+ * @param type $data : '#data' parameter of so_forms' element
+ *
+ * @return array
+ */
+function prestataires_dispos_form_infos_populate_callback($id, $data) {
+
+    $data += array(
+        'nid' => null,
+        'date' => null,
+    );
+
+    if(empty($data['nid']) || empty($data['date'])) {
+        return array();
+    }
+
+    $time = DateTime::createFromFormat('Y-m-d H:i:s', $data['date'] . '00:00:00');
+
+    $results = db_query(
+        "SELECT pdp.sfid, pdp.raw_inputs
+        FROM {prestataires_dispos} AS pd
+        LEFT JOIN {prestataires_dispos_products} AS pdp ON pdp.infos_id=pd.infos_id
+        WHERE pd.nid=:nid
+        AND (pd.start_timestamp<=:time AND pd.end_timestamp>=:time)
+        AND pd.infos_id IS NOT NULL
+        ",
+        array(
+            ':nid' => $data['nid'],
+            ':time' => $time->format('U'),
+        )
+    );
+
+    $raw_inputs = array();
+
+    while($row = $results->fetchObject()) {
+        $raw_inputs[$row->sfid] = unserialize($row->raw_inputs);
+    }
+
+    return $raw_inputs;
+}
+
+function prestataires_dispos_calendar_get_js_data($nid) {
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+    if(empty($settings)) {return;}
+
+    $layers_filter = array_values(array(0, 255) + $settings['configuration']['layers_filter']);
+    $data = array(
+        'nid' => $nid,
+    );
+
+    $types = _prestataires_dispos_get_constants_by_value();
+    $classes = array();
+
+    $results = db_query(
+        "SELECT d.start_date, d.end_date, d.dispo_type, p.infos_id IS NOT NULL as infos
+        FROM {prestataires_dispos} AS d
+        LEFT JOIN {prestataires_dispos_products} as p ON p.infos_id=d.infos_id
+        WHERE d.nid=:nid
+        AND d.dispo_type!=0
+        AND d.layer IN(:layers)
+        GROUP BY start_timestamp, end_timestamp
+        ORDER BY d.updated ASC",
+        array(
+            ':nid' => $nid,
+            ':layers' => $layers_filter,
+        )
+    );
+
+    while($row = $results->fetchObject()) {
+
+        $period = new DatePeriod(
+            DateTime::createFromFormat('Y-m-d', $row->start_date),
+            new DateInterval('P1D'),
+            DateTime::createFromFormat('Y-m-d', $row->end_date)->modify('+1 day')
+        );
+
+        $infos_class = null;
+
+        foreach($period as $date) {
+
+            if($row->infos == true && $infos_class == null) {
+                $infos_class = 'pdispos_infos_start pdispos_has_infos';
+            }
+
+            $formated = $date->format('Y-m-d');
+
+            $classes[$formated] = array($types[$row->dispo_type]['class']);
+
+            if($row->infos == true && $infos_class != null) {
+                $classes[$formated][] = $infos_class;
+
+                $infos_class = 'pdispos_infos pdispos_has_infos';
+            }
+        }
+
+        if($row->infos == true) {
+            array_pop($classes[$formated]);
+
+            if($row->start_date == $row->end_date) {
+                $infos_class = 'pdispos_infos_unique pdispos_has_infos';
+            } else {
+                $infos_class = 'pdispos_infos_end pdispos_has_infos';
+            }
+
+            array_push($classes[$formated], $infos_class);
+        }
+    }
+
+    $data['classes'] = $classes;
+
+    return drupal_json_encode($data);
+}
+
+/**
+ * Implementation of hook_prestataires_node_add()
+ */
+function prestataires_dispos_prestataires_node_add($nid, $uid) {
+    // Pour le moment, ça n'est pas pertinent, car on se retrouve avec ces nodes comme résultats de la recherche par dispo (mode permissif)
+    // TODO : trouver mieux
+    /*
+    $settings = variable_get('prestataires_dispos_settings', array());
+    $node_type = db_query("SELECT type FROM {node} WHERE nid=?", array($nid))->fetchColumn();
+
+    // pas de node type = pas de node tout court
+    if($node_type == null || !array_key_exists($node_type, $settings['nodes_types'])) {return;}
+
+    $exists = db_query("SELECT count(*)>0 FROM {prestataires_dispos} WHERE nid=?", array($nid))->fetchColumn();
+
+    if($exists == 1) {return;}
+
+    $now = new DateTime();
+    $now->setTimezone(new DateTimeZone("Europe/Paris"));
+
+    $from = $now->format('Y-m-d');
+
+    $now->modify('+1 year');
+    $to = $now->format('Y-m-d');
+
+    prestataires_dispos_save_periods($nid, array(
+        array(
+            'type' => 0,
+            'capacity' => 0,
+            'period' => array(
+                'date_from' => $from,
+                'date_to' => $to,
+            ),
+            'infos' => array(),
+        ),
+    ));
+    */
+}
+
+/**
+ * Save a set of availabilities periods for a given node.
+ *
+ * @param int $nid
+ * @param array $input_periods_data : non-associative array of arrays :
+ *                  - 'type' : int : type of dispo
+ *                  - 'layer' : int : writing priority (lower layer indexes will be overriden by higher ones)
+ *                  - 'capacity' : int : number of remaining places for the period
+ *                  - 'period' : array :
+ *                          - 'date_from' : string : format 'Y-m-d'
+ *                          - 'date_to' : string : format 'Y-m-d'
+ *
+ *                  - 'infos' : array : @see prestataires_dispos_node_form_submit() for structure
+ */
+function prestataires_dispos_save_periods($nid, $input_periods_data) {
+
+    $layers = array();
+    $year = prestataires_dispos_get_year_pattern(true);
+
+    $updated = time();
+    $dispo_updated = array();
+    $capacities = array();
+
+    $results = db_query("SELECT * FROM {prestataires_dispos} WHERE nid=? ORDER BY layer ASC", array($nid));
+
+    while($row = $results->fetchObject()) {
+
+        if(!array_key_exists($row->layer, $layers)) {
+            $layers[$row->layer] = array();
+        }
+
+        $layers[$row->layer][] = array(
+            'type' => $row->dispo_type,
+            'layer' => $row->layer,
+
+            'period' => array(
+                'date_from' => $row->start_date,
+                'date_to' => $row->end_date,
+            ),
+
+            'capacity' => $row->capacity,
+
+            // on ne récupère pas les infos proprement dites, leur signature suffit (voir ci-dessous)
+            'infos' => $row->infos_id,
+
+            'dispo_updated' => $row->dispo_updated,
+        );
+    }
+
+    foreach($input_periods_data as $input) {
+
+        if(!array_key_exists($input['layer'], $layers)) {
+            $layers[$input['layer']] = array();
+        }
+
+        $layers[$input['layer']][] = $input;
+    }
+
+    ksort($layers);
+
+    $infos_sets = array();
+
+    foreach($layers as $layer_index => $layer) {
+
+        foreach($layer as $data) {
+
+            $slice = array();
+
+            $infos_id = null;
+
+            if(!empty($data['infos'])) {
+                // cet index, est également une "signature" de l'information. Il va permettre d'identifier la teneur des infos déjà stockées,
+                // sans avoir à les récupérer au préalable, et également de pouvoir les réutiliser sans avoir à les réécrire
+                if(is_array($data['infos'])) {
+
+                    $infos_id = substr(md5(serialize($data['infos'])), 0, 8);
+                    $infos_sets[$infos_id] = $data['infos'];
+
+                } else {
+
+                    $infos_id = $data['infos'];
+                }
+
+                $capacities[$infos_id] = $data['capacity'];
+            }
+
+            $start_date = DateTime::createFromFormat('Y-m-d', $data['period']['date_from']);
+            $end_date = DateTime::createFromFormat('Y-m-d', $data['period']['date_to']);
+            $end_date = $end_date->modify('+1 day');
+            $period = new DatePeriod($start_date, new DateInterval('P1D'), $end_date);
+
+            $dispo_updated[$start_date->format('Y-m-d')] = array_key_exists('dispo_updated', $data) ? $data['dispo_updated'] : $updated;
+
+            foreach($period as $date) {
+                $slice[$date->format('Y-m-d')] = array(
+                    'type' => $data['type'],
+                    'layer' => $layer_index,
+                    'infos' => $infos_id,
+                );
+            }
+
+            $year = array_merge($year, $slice);
+        }
+    }
+
+    reset($year);
+
+    foreach($infos_sets as $infos_id => $infos) {
+
+        foreach($infos as $info) {
+
+            db_query("REPLACE INTO {prestataires_dispos_products} SET
+                      infos_id=?,
+                      sfid=?,
+                      weight=?,
+                      quantity=?,
+                      capacity=?,
+                      comment=?,
+                      raw_inputs=?",
+                array(
+                    $infos_id,
+                    $info['field_id'],
+                    $info['weight'],
+                    $info['quantity'],
+                    $info['capacity'],
+                    $info['comment'],
+                    $info['raw_inputs'],
+                )
+            );
+        }
+    }
+
+    $records = array();
+    $slice_start = key($year);
+    $slice_end = $slice_start;
+    $previous_values = array_shift($year);
+    $year[] = array(); // "point d'arrêt"
+
+    foreach($year as $day => $values) {
+
+        if($values == $previous_values) {
+            $slice_end = $day;
+            continue;
+        }
+
+        $records[] = array(
+            'nid' => $nid,
+            'updated' => $updated,
+            'dispo_updated' => array_key_exists($slice_start, $dispo_updated) ? $dispo_updated[$slice_start] : $updated,
+            'start_date' => $slice_start,
+            'end_date' => $slice_end,
+            'start_timestamp' => DateTime::createFromFormat('Y-m-dH:i:s', $slice_start . '00:00:00')->format('U'),
+            'end_timestamp' => DateTime::createFromFormat('Y-m-dH:i:s', $slice_end . '00:00:00')->format('U'),
+            'dispo_type' => $previous_values['type'],
+            'infos_id' => $previous_values['infos'],
+            'capacity' => (int)$capacities[$previous_values['infos']],
+            'control' => count($records),
+            'layer' => $previous_values['type'] != 0 ? $previous_values['layer'] : 0, // les dispos non définies sont "transparentes"
+        );
+
+        $slice_start = $day;
+        $slice_end = $day;
+        $previous_values = $values;
+    }
+
+    foreach($records as $record) {
+        drupal_write_record('prestataires_dispos', $record);
+    }
+
+    $num_written = db_query("SELECT count(*) FROM {prestataires_dispos} WHERE nid=? AND updated=?", array($nid, $updated))->fetchColumn();
+
+    if($num_written == count($records)) {
+        db_query("DELETE FROM {prestataires_dispos} WHERE nid=? AND updated!=?", array($nid, $updated));
+    }
+}
+
+/**
+ * Build the year pattern used to map dispos slices.
+ *
+ * @param boolean $rebuild : clear cache and rebuild data ? (false)
+ * @return array : associative array indexed by date :
+ *                      - 'type' : int : dispo type : 0
+ *                      - 'layer' : int : 0
+ *                      - 'infos' : null
+ */
+function prestataires_dispos_get_year_pattern($rebuild = false) {
+
+    $year = &drupal_static(__FUNCTION__);
+
+    $today = new DateTime();
+
+    if ($rebuild == false && isset($year)) {
+        return $year;
+    }
+
+    $cache_id = 'prestataires_dispos:year:' . $today->format('Y-m-d');
+
+    $cache = cache_get($cache_id);
+
+    if ($rebuild == false && !empty($cache)) {
+      $year = $cache->data;
+      return $year;
+    }
+
+    $one_year_later = clone $today;
+    // DatePeriod n'inclut pas le dernier jour : on ajoute donc 1 jour
+    // On a besoin d'un "point d'arrêt" pour l'algo de génération des tranches (voir ci-dessous) : on ajoute donc 1 jour
+    $one_year_later->modify('+1 year +2 days');
+
+    $period = new DatePeriod($today, new DateInterval('P1D'), $one_year_later);
+
+    $year = array();
+
+    foreach($period as $date) {
+        $year[$date->format('Y-m-d')] = array(
+            'type' => 0,
+            'layer' => 0,
+            'infos' => null,
+        );
+    }
+
+    cache_clear_all('prestataires_dispos:year:', 'cache', true);
+    cache_set($cache_id, $year);
+
+    return $year;
+}
+
+function prestataires_dispos_field_extra_fields() {
+
+    $extra = array();
+    $settings = variable_get('prestataires_dispos_settings', array());
+
+    foreach($settings['nodes_types'] as $node_type => $infos) {
+
+        $extra['node'][$node_type]['display'] = array(
+            'prestataires_dispos_calendar' => array(
+                'label' => t("Prestataires dispos : availabilities calendar"),
+                'weight' => 0,
+            ),
+
+            'prestataires_dispos_results_infos' => array(
+                'label' => t("Prestataires dispos : search results infos"),
+                'weight' => 0,
+            ),
+        );
+    }
+
+    return $extra;
+}
+
+function prestataires_dispos_get_last_updated($nid) {
+
+    $timestamp = db_query("SELECT MAX(updated) FROM {prestataires_dispos} WHERE nid=?", array($nid))->fetchColumn();
+
+    if(empty($timestamp)) {return false;}
+
+    $updated = DateTime::createFromFormat('U', $timestamp);
+    $updated->setTimezone(new DateTimeZone("Europe/Paris"));
+
+    return t("Last update : on @date at @hour", array('@date' => $updated->format('d/m/Y'), '@hour' => $updated->format('H\hi')));
+}
+
+function prestataires_dispos_calendar_page_form($form, &$form_state, $nid) {
+
+    $updated = prestataires_dispos_get_last_updated($nid);
+    if($updated == false) {return;}
+
+    $legend = array();
+
+    foreach(_prestataires_dispos_get_constants_by_value() as $constants) {
+        $legend[] = "<span class='calendar_legend " . $constants['class'] . "'></span>" . $constants['legend'];
+    }
+
+    $legend[] = "<span class='calendar_legend pdispos_infos_unique'></span>" . t("Period has informations");
+
+    $form = array(
+        '#tree' => true,
+
+        'calendar_wrapper' => array(
+            '#theme' => 'prestataires_dispos_calendar',
+
+            'calendar' => array(
+                '#type' => 'container',
+                '#attributes' => array('class' => array('clearfix')),
+
+                'calendar' => array(
+                    '#type' => 'container',
+                ),
+                'calendar_infos_wrapper' => array(
+                    '#type' => 'container',
+                    '#id' => 'calendar_infos_wrapper',
+
+                    'calendar_infos' => array(
+                        '#type' => 'container',
+                        '#id' => 'calendar_infos',
+                    ),
+
+                    'close_infos' => array(
+                        '#markup' => "<a id='close_infos' href='#'><span>" . t("Close") . "</span></a>",
+                    ),
+                ),
+                'calendar_data' => array(
+                    '#prefix' => "<script type='text/javascript'>var calendarData=JSON.parse('",
+                    '#markup' => prestataires_dispos_calendar_get_js_data($nid),
+                    '#suffix' => "');</script>"
+                ),
+            ),
+
+            'calendar_updated' => array(
+                '#prefix' => "<div class='calendar_last_update'>",
+                '#markup' => $updated,
+                '#suffix' => "</div>",
+            ),
+
+            'calendar_legend' => array(
+                '#type' => 'container',
+                '#attributes' => array('class' => array('calendar_legend clearfix')),
+
+                'content' => array(
+                    '#markup' => theme('item_list', array(
+                        'title' => t("Legend"),
+                        'items' => $legend,
+                        'type' => 'ul',
+                        'attributes' => array('class' => array('calendar_legends')),
+                    )),
+                ),
+            ),
+        ),
+    );
+
+    return $form;
+}
+
+function prestataires_dispos_node_view($node, $view_mode, $langcode) {
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+    if(!array_key_exists($node->type, $settings['nodes_types'])) {return;}
+
+    $disallow_calendar_display = module_invoke_all('prestataire_dispos_display_calendar', $node);
+
+    foreach($disallow_calendar_display as $disallow) {
+        if($disallow == true) {
+            return;
+        }
+    }
+
+    if($node->tnid != 0 && $node->tnid != $node->nid) {
+        $nid = $node->tnid;
+    } else {
+        $nid = $node->nid;
+    }
+
+    $node_definition = prestataires_get_node_definition($nid);
+
+    if(!empty($node_definition) && $node_definition->params['functionalities']['dispos@prestataires_dispos'] == true) {
+
+        $module_path = drupal_get_path('module', 'prestataires_dispos');
+
+        $dispos_form = drupal_get_form('prestataires_dispos_calendar_page_form', $nid);
+        if(empty($dispos_form)) {return;}
+
+        $node->content['prestataires_dispos_calendar'] = array(
+            '#type' => 'container',
+            '#attributes' => array('id' => 'prestataires_dispos_calendar_wrapper'),
+
+            '#attached' => array(
+                'css' => array(
+                    $module_path . '/css/prestataires_dispos.page.css',
+                ),
+
+                'js' => array(
+                    $module_path . '/scripts/datepicker.js',
+                    $module_path . '/scripts/moment.min.js',
+                    $module_path . '/scripts/prestataires_dispos.page.js',
+                ),
+            ),
+
+            'content' => $dispos_form,
+        );
+    }
+}
+
+/*
+ * Implementation of hook_so_forms()
+ */
+function prestataires_dispos_so_forms($module, $id) {
+
+    if($module == 'prestataires_dispos') {
+
+        return array(
+            'fields_definitions' => array(
+                'product' => array(
+                    'label' => t("Produit"),
+                    'type' => 'pdispos',
+                    'widget' => 'pdispos_product',
+                ),
+            ),
+            'types_definitions' => array(
+                'pdispos' => array(
+                    'label' => "Product",
+                    'class' => 'FormFieldPDisposProduct',
+                ),
+            ),
+            'widgets_definitions' => array(
+                'pdispos_product' => array(
+                    'label' => "Product availability",
+                    'class' => 'FormWidgetPDisposProduct',
+                ),
+            ),
+        );
+
+    } elseif($module == 'so_listings') {
+
+        $infos = explode('@', $id);
+        if($infos[1] != 'search') {return;}
+
+        return array(
+            'fields_definitions' => array(
+                'pdispo_search' => array(
+                    'label' => t("Search by availabilities"),
+                    'type' => 'pdispos_search',
+                ),
+            ),
+            'types_definitions' => array(
+                'pdispos_search' => array(
+                    'label' => "Availabilities",
+                    'class' => 'FormFieldPDisposSearch',
+                ),
+            ),
+            'widgets_definitions' => array(
+                'pdispos_search_widget' => array(
+                    'label' => "Search widget",
+                    'class' => 'FormWidgetPDisposSearch',
+                ),
+            ),
+        );
+
+    }
+}
+
+function prestataires_dispos_so_listings_search($field, &$query, &$data) {
+    prestataires_dispos_build_so_listing_search_query($field['values'], $field['configuration'], $query, $data);
+}
+
+function prestataires_dispos_build_so_listing_search_query($values, $configuration, &$query, &$data) {
+
+    // si les valeurs ont été  passées dans l'URL, elles ne sont au format "array" et non "string"
+    array_walk($values, function(&$val){
+        $val = is_array($val) ? $val[0] : $val;
+    });
+
+    if($values['from'] == null && $values['to'] == null) {return;}
+
+    $query['#context'][] = 'pdispos_search';
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+
+    $dispos = prestataires_dispos_search_dispos(
+        array(
+            'from' => $values['from'],
+            'to' => $values['to'],
+        ),
+        array(
+            'capacity' => $values['capacity'],
+            'accuracy' => $values['accuracy'],
+            'shift_dates' => array(
+                'start' => $configuration['shift_dates']['start'],
+                'end' => $configuration['shift_dates']['end'],
+            ),
+            'undefined_mode' => $configuration['undefined_mode'],
+            'debug_mode' => $settings['configuration']['debug_mode'],
+        )
+    );
+
+    $id_fragment = so_listings_prepare_query_fragment_data('id@prestataires_dispos');
+
+    // (Prise en charge des nodes traduits)
+    $query['join'][] = "LEFT JOIN {prestataires_dispos} AS prestataires_dispos ON prestataires_dispos.nid=n.nid OR prestataires_dispos.nid=n.tnid";
+
+    // on push ce "0" pour éviter une clause IN vide, tout en invalidant la totalité du listing en cas de réponse vide.
+    $dispos['ids'][] = 0;
+
+    $query['where'][] = $id_fragment->fields[0] . " IN(" . implode(',', $dispos['ids']) . ")";
+
+    $data = $dispos['data'];
+}
+
+/**
+ * Provides availabilities informations relative to a given period.
+ *
+ * @param array $dates :
+ *                  - 'from' : string : Y-m-d
+ *                  - 'to' : string : Y-m-d
+ *
+ * @param array $options :
+ *                  - capacity : int
+ *                  - accuracy : 0 = at least one valid dispo / 1 = only consecutive dispos
+ *                  - shift_dates : array :
+ *                      - 'start' : string : 'start' = add 1 day to start date
+ *                      - 'end' : string : 'end' = substract 1 day to end date
+ *                  - undefined_mode : 0 = 'undefined' is not a valid dispo / 1 = 'undefined' is a valid dispo
+ *                  - debug_mode : boolean : display query ?
+ *
+ * @return array :
+ *          - ids : array : list of valid dispos' ids
+ *          - data : array :
+ *              - 'period' : array : searched dates
+ *                  - 'from' : string : Y-m-d
+ *                  - 'to' : string : Y-m-d
+ *              - 'relevant_nodes' : array : if 'undefined_mode' is set on 1, contains the list of nids which have real dispos set, other than 'undefined'.
+ *              - 'dispos_id' : array : list of id of first matching record.
+ *              - 'more_infos' array : the query only returns the first matching dispo id ; this list contains nids which have more matches than this one.
+ */
+function prestataires_dispos_search_dispos($dates, $options) {
+
+    $dispos = array(
+        'ids' => array(),
+        'nids' => array(),
+        'data' => array(),
+    );
+
+    // Les résultats sont sensés être exploitables : on ne tiens donc pas compte de ce qui est antérieur à aujourd'hui
+    if($dates['from'] < date('Y-m-d')) {
+        $dates['from'] = date('Y-m-d');
+    }
+
+    $dates['from'] = $dates['from'] == null ? date('Y-m-d') : $dates['from'];
+    $dates['to'] = $dates['to'] == null ? date('Y-m-d') : $dates['to'];
+
+    $from_date = DateTime::createFromFormat('Y-m-d H:i:s', $dates['from'] . ' 00:00:00');
+    $to_date = DateTime::createFromFormat('Y-m-d H:i:s', $dates['to'] . ' 00:00:00');
+
+    if($to_date > $from_date && count(array_filter($options['shift_dates'])) > 0) {
+
+        $shifted_from = clone $from_date;
+        $shifted_to = clone $to_date;
+
+        if($options['shift_dates']['start'] === 'start') {
+            $shifted_from->modify('+1 day');
+        }
+
+        if($options['shift_dates']['end'] === 'end') {
+            $shifted_to->modify('-1 day');
+        }
+
+        if($shifted_to >= $shifted_from) {
+            $from_date = $shifted_from;
+            $to_date = $shifted_to;
+        }
+    }
+
+    $from = $from_date->format('U');
+    $to = $to_date->format('U');
+
+    $dispos['data']['period'] = array(
+        'from' => $from,
+        'to' => $to,
+    );
+
+    $dispos_types = array(PDISPOS_FREE, PDISPOS_SOME);
+
+    if($options['accuracy'] == 1) {// les résultats ne doivent contenir que des jours valides consécutifs sur l'ensemble de la période
+
+        $accuracy_condition = "=COUNT(*)";
+        $accuracy_having_clause = "COUNT(IF(dispo_type IN(:types), 1, NULL))" . $accuracy_condition;
+
+    } else {// les résultats doivent contenir au moins un jour valide sur l'ensemble de la période
+        $accuracy_condition = ">0";
+        $accuracy_having_clause = "dispo_type IN(:types)";
+    }
+
+    if($options['undefined_mode'] == 1) {// 1 = non-renseigné est un résultat valide
+
+        $dispos_types[] = PDISPOS_UNDEFINED;
+
+        // 'OR dispo_type=0' : anihile la recherche par capacité pour les enregistrements de type non-renseigné
+        // 'OR capacity=-1' : anihile la recherche par capacité si n/a
+        $capacity_having_clause = "COUNT(IF(capacity>=:capacity OR dispo_type=0 OR capacity=-1, 1, NULL))" . $accuracy_condition;
+
+    } else {
+        // 'OR capacity=-1' : anihile la recherche par capacité si n/a
+        $capacity_having_clause = "COUNT(IF(capacity>=:capacity OR capacity=-1, 1, NULL))" . $accuracy_condition;
+    }
+
+    $req = "SELECT id, nid, dispo_type, capacity,
+            COUNT(IF(dispo_type=0, 1, NULL))=COUNT(*) AS undefined,
+            COUNT(IF(infos_id IS NOT NULL, 1, NULL)) > 1 AS more_infos
+            FROM (
+                SELECT * FROM {prestataires_dispos}
+                WHERE (
+                (start_timestamp<=:start AND end_timestamp>=:start)
+                OR (start_timestamp<=:end AND end_timestamp>=:end)
+                OR (start_timestamp>=:start AND end_timestamp<=:end)
+                )
+                ORDER BY infos_id IS NOT NULL DESC, start_timestamp ASC
+            ) AS ordered
+            GROUP BY nid
+            HAVING " . $accuracy_having_clause . " AND " . $capacity_having_clause;
+
+    $args = array(
+        ':start' => $from,
+        ':end' => $to,
+        ':types' => $dispos_types,
+        ':capacity' => (int)$options['capacity'],
+    );
+
+    // DEBUG
+    if($options['debug_mode'] == true) {
+
+        $formated_args = $args;
+        array_walk($formated_args, function(&$val){$val = is_array($val) ? implode(', ', $val) : $val;});
+
+        $dump = strtr($req, array('{' => '', '}' => ''));
+        $dump = strtr($dump, $formated_args);
+
+        if(!class_exists('SqlFormatter')) {
+            require_once('lib/SqlFormatter.php');
+        }
+
+        $formated_dump = SqlFormatter::format($dump);
+        drupal_set_message("<strong>DEBUG - PDispos query : </strong><br />" . $formated_dump);
+    }
+
+    $results = db_query($req, $args);
+
+    $dispos['data']['relevant_nodes'] = array();
+    $dispos['data']['more_infos'] = array();
+    $dispos['data']['dispos_id'] = array();
+
+    while($row = $results->fetchObject()) {
+
+        $dispos['ids'][] = $row->id;
+        $dispos['nids'][$row->nid] = $row->id;
+        $dispos['data']['dispos_id'][$row->nid] = $row->id;
+
+        if($options['undefined_mode'] == 0 || ($options['undefined_mode'] == 1 && $row->undefined == 0)) {// undefined_mode 1 = non-renseigné est un résultat valide
+            $dispos['data']['relevant_nodes'][] = $row->nid;
+
+            if($row->more_infos == 1) {
+                $dispos['data']['more_infos'][] = $row->nid;
+            }
+        }
+    }
+
+    return $dispos;
+}
+
+/*
+ * Implementation of hook_so_listings_contexts()
+ */
+function prestataires_dispos_so_listings_contexts() {
+
+    return array(
+        'pdispos_search' => array(
+            'label' => t("Search by availabilities"),
+        ),
+    );
+}
+
+/**
+ * Implementation of hook_so_listings_sorting()
+ */
+function prestataires_dispos_so_listings_sorting() {
+
+    return array(
+        'pdispos_updates' => array(
+            'label' => t("Sorting by last availabilities update date"),
+            'clause' => "prestataires_dispos.updated DESC",
+            'join' => array(
+                "LEFT JOIN {prestataires_dispos} AS prestataires_dispos ON prestataires_dispos.nid=n.nid OR prestataires_dispos.nid=n.tnid",
+            ),
+            'fields' => null,
+            'contexts' => array(),
+        ),
+        'pdispos_relevance' => array(
+            'label' => t("Sorting by availabilities search relevance"),
+            'callback' => 'prestataires_dispos_so_listings_sorting_relevance_callback',
+            'cache' => false,
+            'contexts' => array('pdispos_search'),
+        ),
+    );
+}
+
+function prestataires_dispos_so_listings_sorting_relevance_callback($context = null, &$data = null) {
+
+    if($context == null) {return 'prestataires_dispos';}
+
+    $sorting = array(
+        'order_by' => "",
+        'join' => array(),
+    );
+
+    if(!empty($data['relevant_nodes'])) {
+        $sorting['order_by'] = "n.nid IN(" . implode(',', $data['relevant_nodes']) . ") DESC";
+    }
+
+    return $sorting;
+}
+
+/*
+ * Implementation of hook_so_listings_node()
+ */
+function prestataires_dispos_so_listings_node(&$node, $node_fields, $data) {
+
+    if(empty($data)) {return;}
+
+    $settings = variable_get('prestataires_dispos_settings', array());
+
+    if( (!in_array($node['#node']->nid, $data['relevant_nodes'])
+            && $settings['configuration']['display_irrelevant_results_infos'] == false)
+                || !array_key_exists($node['#node']->nid, $data['dispos_id'])) { // il n'y a aucune ligne de dispo correspondante dans la table, pour ce node
+        return;
+    }
+
+    $infos = prestataires_dispos_get_dispo_infos($node['#node']->nid, $data['dispos_id'][$node['#node']->nid], null);
+
+    if($infos['dates_timestamps']['start'] < $data['period']['from'] || $infos['dates_timestamps']['end'] > $data['period']['to']) {
+
+        if($infos['dates_timestamps']['start'] < $data['period']['from']) {
+            $start_date = DateTime::createFromFormat('U', $data['period']['from']);
+        } else {
+            $start_date = DateTime::createFromFormat('U', $infos['dates_timestamps']['start']);
+        }
+
+        $start_date->setTimezone(new DateTimeZone("Europe/Paris"));
+
+        if($infos['dates_timestamps']['end'] > $data['period']['to']) {
+            $end_date = DateTime::createFromFormat('U', $data['period']['to']);
+        } else {
+            $end_date = DateTime::createFromFormat('U', $infos['dates_timestamps']['end']);
+        }
+
+        $end_date->setTimezone(new DateTimeZone("Europe/Paris"));
+
+        if($end_date == $start_date) {
+
+            $infos['dates'] = t("On @date", array('@date' => t($start_date->format('l')) . " " . $start_date->format('d/m/Y')));
+
+        } else {
+
+            $infos['dates'] = t("From @start to @end", array(
+                '@start' => t($start_date->format('l')) . " " . $start_date->format('d/m/Y'),
+                '@end' => t($end_date->format('l')) . " " . $end_date->format('d/m/Y'),
+            ));
+        }
+    }
+
+    $node['prestataires_dispos_results_infos'] = array(
+        '#markup' => theme('prestataire_dispos_listing_infos', array(
+            'node' => $node['#node'],
+            'global_last_update' => prestataires_dispos_get_last_updated($node['#node']->nid),
+            'infos' => $infos,
+            'more_infos' => in_array($node['#node']->nid, $data['more_infos']),
+        )),
+    );
+}
+
+function prestataires_dispos_process_date_popup($element, &$form_state, $form = array()) {
+    $element = date_popup_element_process($element, $form_state, $form);
+
+    $element['date']['#title'] = $element['#title'];
+    $element['date']['#description'] = null;
+
+    return $element;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function prestataires_dispos_theme() {
+
+    $path = drupal_get_path('module', 'prestataires_dispos') . '/theme';
+
+    $theme = array(
+        'prestataires_dispos_nodes_types_overview' => array(
+            'render element' => 'element',
+            'file' => 'prestataires_dispos.admin.inc',
+        ),
+        'prestataires_dispos_node_form_data' => array(
+            'render element' => 'element',
+        ),
+        'prestataires_dispos_calendar' => array(
+            'render element' => 'element',
+            'template' => 'prestataires_dispos_calendar',
+            'path' => $path,
+        ),
+        'prestataire_dispos_infos' => array(
+            'path' => $path,
+            'file' => 'theme.inc',
+            'variables' => array(
+                'infos' => array(),
+            ),
+        ),
+        'prestataire_dispos_listing_infos' => array(
+            'path' => $path,
+            'file' => 'theme.inc',
+            'variables' => array(
+                'node' => null,
+                'global_last_update' => null,
+                'infos' => array(),
+                'more_infos' => false,
+            ),
+        ),
+    );
+
+    return $theme;
+}
+
+function theme_prestataires_dispos_node_form_data($vars) {
+
+    $output = "";
+
+    $element = $vars['element'];
+
+    $period = $element['period'];
+    $period['date_from_display']['#prefix'] = "<div><span class='date_label'>" . $period['date_from_display']['#prefix'] . " : </span>";
+    $period['date_from_display']['#suffix'] = "</div>";
+    $period['date_to_display']['#prefix'] = "<div><span class='date_label'>" . $period['date_to_display']['#prefix'] . " : </span>";
+    $period['date_to_display']['#suffix'] = "</div>";
+    $output .= render($period);
+
+    $output .= render($element['pin_infos']);
+
+    foreach(element_children($element['type']) as $type) {
+
+        $class = "";
+
+        switch($type) {
+            case PDISPOS_UNDEFINED:
+                $class = PDISPOS_UNDEFINED_CLASS;
+                break;
+
+            case PDISPOS_FREE:
+                $class = PDISPOS_FREE_CLASS;
+                break;
+
+            case PDISPOS_SOME:
+                $class = PDISPOS_SOME_CLASS;
+                break;
+
+            case PDISPOS_FULL:
+                $class = PDISPOS_FULL_CLASS;
+                break;
+
+            case PDISPOS_CLOSED:
+                $class = PDISPOS_CLOSED_CLASS;
+                break;
+        }
+
+        $element['type'][$type]['#title'] = "<span class='" . $class . "'></span>" . $element['type'][$type]['#title'];
+    }
+
+    $element['type']['#title'] = '';
+
+    $type_wrapper = array(
+        '#type' => 'fieldset',
+        '#title' => t("Availability type"),
+        '#value' => render($element['type']) . "<div class='ajax_loading'></div>",
+        '#id' => 'edit-availability-type',
+    );
+
+    $output .= render($type_wrapper);
+
+    $element['infos']['ajax_loading'] = array('#markup' => "<div class='ajax_loading'></div>");
+    $output .= render($element['infos']);
+
+    return $output;
+}

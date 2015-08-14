@@ -1,0 +1,223 @@
+<?php
+
+function prestataires_dispos_schema() {
+
+    $schema = array();
+
+    $schema['prestataires_dispos'] = array(
+
+        'description' => "Store availabilities slices",
+
+        'fields' => array(
+            'id' => array(
+				'type' => 'serial',
+				'not null' => true,
+                'unsigned' => true,
+				'description' => "The dispo rows id. Primary key.",
+			),
+
+            'nid' => array(
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "The identifier of the node",
+            ),
+
+            'updated' => array(
+                'type' => 'int',
+                'not null' => true,
+                'default' => 0,
+                'description' => "Unix timestamp of when the dispos set was saved",
+            ),
+
+            'dispo_updated' => array(
+                'type' => 'int',
+                'not null' => true,
+                'default' => 0,
+                'description' => "Unix timestamp of when the record was saved",
+            ),
+
+            'start_date' => array(
+                'description' => "The first date of the slice",
+                'type' => 'text',
+                'size' => 'tiny',
+                'not null' => true,
+            ),
+
+            'end_date' => array(
+                'description' => "The last date of the slice",
+                'type' => 'text',
+                'size' => 'tiny',
+                'not null' => true,
+            ),
+
+            'start_timestamp' => array(
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "The first date of the slice",
+            ),
+
+            'end_timestamp' => array(
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "The last date of the slice",
+            ),
+
+            'dispo_type' => array(
+                'type' => 'int',
+                'size' => 'tiny',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "The slice's dispo type",
+            ),
+
+            'infos_id' => array(
+                'type' => 'text',
+                'size' => 'tiny',
+                'not null' => false,
+                'description' => "Informations ID shared by all products associated with the dispo",
+            ),
+
+            'capacity' => array(
+                'description' => "Calculated number of people remaining",
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => false, // 7001 : passé à 'false'
+                'default' => -1,     // 7001 : passé de '0' à '-1'
+                'size' => 'small',
+            ),
+
+            'control' => array(
+                'type' => 'int',
+                'size' => 'medium',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "The slice's index in set",
+            ),
+            
+            // added in 7002
+            'layer' => array(
+                'type' => 'int',
+                'size' => 'small',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "The slice's layer index from 0 (bottom) to 255 (top)",
+            ),
+        ),
+
+        'primary key' => array('id'),
+    );
+
+    $schema['prestataires_dispos_products'] = array(
+
+        'description' => "Store product's details",
+
+        'fields' => array(
+            'infos_id' => array(
+                'type' => 'varchar',
+				'length' => '255',
+                'not null' => true,
+                'description' => "ID shared by all infos associated with one dispo",
+            ),
+
+            'sfid' => array(
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+                'description' => "so_forms field identifier",
+            ),
+
+            'weight' => array(
+                'description' => "Product field weight",
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => false,
+                'size' => 'small',
+            ),
+
+            'quantity' => array(
+                'description' => "Product quantity",
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+                'size' => 'small',
+            ),
+
+            'capacity' => array(
+                'description' => "Product calculated number of people",
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => false, // 7001 : passé à 'false'
+                'size' => 'medium',
+            ),
+
+            'comment' => array(
+                'description' => "Comment on product",
+                'type' => 'text',
+                'size' => 'tiny',
+                'not null' => false,
+            ),
+
+            'raw_inputs' => array(
+                'description' => "Data used to populate so_forms",
+                'type' => 'text',
+                'size' => 'medium',
+                'not null' => true,
+            ),
+        ),
+
+        'primary key' => array('infos_id', 'sfid'),
+    );
+
+    return $schema;
+}
+
+/**
+ * Two fields 'capacity' : modification to signed int, default '-1'
+ */
+function prestataires_dispos_update_7001() {
+
+    $field_1 = array(
+        'description' => "Calculated number of people remaining",
+        'type' => 'int',
+        'not null' => true,
+        'unsigned' => false,    // modification 'true' -> 'false'
+        'default' => -1,        // modification '0' -> '-1'
+        'size' => 'small',
+    );
+
+    db_change_field('prestataires_dispos', 'capacity', 'capacity', $field_1);
+
+    $field_2 = array(
+        'description' => "Product calculated number of people",
+        'type' => 'int',
+        'not null' => true,
+        'unsigned' => false,    // modification 'true' -> 'false'
+        'size' => 'medium',
+    );
+
+    db_change_field('prestataires_dispos_products', 'capacity', 'capacity', $field_2);
+
+    return "'capacity' fields have been altered";
+}
+
+/**
+ * Adding column 'layer' to {prestataires_dispos}
+ */
+function prestataires_dispos_update_7002() {
+    
+    $column = array(
+        'type' => 'int',
+        'size' => 'small',
+        'not null' => true,
+        'unsigned' => true,
+        'description' => "The slice's layer index from 0 (bottom) to 255 (top)",
+        'initial' => 255,
+    );
+    
+    db_add_field('prestataires_dispos', 'layer', $column);
+    
+    return "{prestataires_dispos}.layer has been added";
+}

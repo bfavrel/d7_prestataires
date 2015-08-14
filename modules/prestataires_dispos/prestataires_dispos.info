@@ -1,0 +1,13 @@
+name = "Prestataires dispos"
+version = "7.x-1.0"
+description = "Provides availabilities functionalities."
+package = "Saison d'Or"
+core = 7.x
+
+dependencies[] = so_forms
+dependencies[] = trigger
+
+files[] = forms_plugins/fields/FormFieldPDisposProduct.class.php
+files[] = forms_plugins/widgets/FormWidgetPDisposProduct.class.php
+files[] = forms_plugins/fields/FormFieldPDisposSearch.class.php
+files[] = forms_plugins/widgets/FormWidgetPDisposSearch.class.php

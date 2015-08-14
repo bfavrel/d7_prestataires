@@ -1,0 +1,125 @@
+SELECT * FROM prestataires_dispos 
+WHERE (start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30')
+
+SELECT nid, capacity FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+AND dispo_type IN(1,2)
+AND capacity>=2
+GROUP BY nid
+HAVING ((MIN(control)+MAX(control))*COUNT(control)/2)=SUM(control)
+
+SELECT *, COUNT(DISTINCT(infos_id)) AS num_infos FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+AND dispo_type IN(1,2)
+AND capacity>=2
+GROUP BY nid
+HAVING ((MIN(control)+MAX(control))*COUNT(control)/2)=SUM(control)
+
+// prise en compte du undefined
+SELECT *, COUNT(DISTINCT(infos_id)) AS num_infos FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+AND (dispo_type IN(1,2) AND capacity>=2)
+OR dispo_type=0
+GROUP BY nid
+HAVING ((MIN(control)+MAX(control))*COUNT(control)/2)=SUM(control)
+
+SELECT *, COUNT(dispo_type=0) AS undefined, COUNT(control) AS num_rows FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+AND dispo_type IN(1,2)
+AND capacity>=2
+GROUP BY nid
+HAVING ((MIN(control)+MAX(control))*COUNT(control)/2)=SUM(control)
+
+COUNT(CASE WHEN dispo_type IN(1,2) THEN 1 ELSE NULL END)
+
+
+// on commence à avoir quelque chose
+
+SELECT * FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+GROUP BY nid
+HAVING COUNT(*)=COUNT(IF(dispo_type IN(1,2), 1, NULL))
+AND COUNT(*)=COUNT(IF(capacity>=2, 1, NULL))
+
+SELECT * FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+GROUP BY nid
+HAVING COUNT(*)=COUNT(IF(dispo_type IN(0,1,2), 1, NULL))
+AND (COUNT(*)=COUNT(IF(capacity>=2, 1, NULL)) OR dispo_type=0)
+
+
+// une approche intéressante pour le tri intra-groupe
+SELECT * FROM 
+(
+SELECT * FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+ORDER BY infos_id IS NOT NULL DESC
+) 
+AS ordered
+GROUP BY nid
+HAVING COUNT(*)=COUNT(IF(dispo_type IN(1,2), 1, NULL))
+AND COUNT(*)=COUNT(IF(capacity>=2, 1, NULL))
+
+
+// pertinence
+COUNT(*)-COUNT(IF(dispo_type IN(1,2), 1, NULL)) AS relevance
+
+// les non-renseignés
+SELECT * FROM prestataires_dispos WHERE 
+((start_date<='2014-04-10' AND end_date>='2014-04-10')
+OR (start_date<='2014-04-30' AND end_date>='2014-04-30')
+OR(start_date>='2014-04-10' AND end_date<='2014-04-30'))
+GROUP BY nid
+HAVING COUNT(*)=COUNT(IF(dispo_type=0, 1, NULL))
+
+
+
+
+
+ALTER TABLE `prestataires_dispos`  ADD `dispo_updated` INT UNSIGNED NOT NULL DEFAULT '0' COMMENT 'Unix timestamp of when the record was saved' AFTER `updated`
+
+UPDATE `prestataires_dispos` SET `dispo_updated`=`updated`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,5 @@
+name = "Prestataires"
+version = "7.x-1.0"
+description = "Base module of prestataires suite. Provides ability to associate nodes to users."
+package = "Saison d'Or"
+core = 7.x

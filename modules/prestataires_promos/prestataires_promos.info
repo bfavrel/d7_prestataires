@@ -1,0 +1,7 @@
+name = "Prestataires promos"
+version = "7.x-1.0"
+description = "Provides promotion functionalities for VV site."
+package = "Saison d'Or"
+core = 7.x
+
+dependencies[] = prestataires

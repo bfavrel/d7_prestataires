@@ -1,0 +1,8 @@
+name = "Prestataires Analytics"
+version = "7.x-1.0"
+description = "Provides Google Analytics display to prestataires."
+package = "Saison d'Or"
+core = 7.x
+
+dependencies[] = prestataires
+dependencies[] = libraries

@@ -1,0 +1,155 @@
+@import 'compass/css3';
+
+$bg_color: #eeeeee;
+$typo_color: #666666;
+$today_typo_color: #ff6666;
+$selected_typo_color: #ff0000;
+
+div.datepicker {
+    display: none;
+    margin: 0;
+    position: relative;
+    line-height: 16px;
+	font-size: 8.5pt;
+    color: $typo_color;
+    cursor: default;
+
+    div.ajax_loading {
+        display: none;
+    }
+
+    div.monthWrapper {
+        float: left;
+        padding: 4px;
+        margin: 0 1px 1px 0;
+        @include border-radius(4px);
+        background-color: $bg_color;
+    }
+
+    a {
+        text-decoration: none;
+        color: $typo_color;
+        cursor: pointer;
+        outline: none;
+    }
+
+    a:hover {
+        color: darken($typo_color, 20%);
+
+        span {
+            background-color: lighten($bg_color, 8%);
+        }
+    }
+
+    table {
+        border-collapse: collapse;
+
+        thead {
+            border-bottom: 1px solid darken($bg_color, 25%);
+        }
+    }
+
+    td {
+        padding: 1px 0 0 0;
+        margin: 0;
+        text-align: center;
+
+        a {
+            span {
+            display: block;
+            width: 28px;
+            }
+        }
+    }
+
+    td.today {
+        a {
+            color: $today_typo_color;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    }
+
+    td.datepickerSelected {        
+        background-color: lighten($bg_color, 20%);
+        
+        a, a span {
+            color: $selected_typo_color !important;
+        }
+    }
+
+    td.datepickerNotInMonth {
+        @include opacity(0.33);
+        background-color: transparent;
+        background-image: none;
+        
+        a, a span {
+            color: $typo_color !important;
+        }
+    }
+
+    td.datepickerDisabled {
+        @include opacity(0.33);
+
+        a {
+            cursor: default;
+
+            span {
+                background-color: transparent;
+            }
+        }
+
+        a:hover {
+            color: $typo_color;
+        }
+    }
+
+    th {
+        padding: 0;
+        border: none;
+        text-align: center;
+        font-weight: normal;
+    }
+    
+    th.datepickerGoPrev a,
+    th.datepickerGoNext a {
+        
+    }
+    
+    th.datepickerGoPrev a span,
+    th.datepickerGoNext a span {
+        padding: 2px 4px;
+    }
+
+    th.datepickerWeek {
+        border-right: 1px solid darken($bg_color, 25%);
+
+        a {
+            span {
+                display: block;
+                width: 20px;
+            }
+        }
+    }
+
+    .datepickerMonth {
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+    
+    table.datepickerViewDays tbody.datepickerMonths,
+    table.datepickerViewDays tbody.datepickerYears {
+        display: none;
+    }
+    table.datepickerViewMonths tbody.datepickerDays,
+    table.datepickerViewMonths tbody.datepickerYears,
+    table.datepickerViewMonths tr.datepickerDoW {
+        display: none;
+    }
+    table.datepickerViewYears tbody.datepickerDays,
+    table.datepickerViewYears tbody.datepickerMonths,
+    table.datepickerViewYears tr.datepickerDoW {
+        display: none;
+    }
+}
+

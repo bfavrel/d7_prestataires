@@ -1,0 +1,505 @@
+# $Id$
+#
+# French translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  prestataires_dispos.admin.inc: n/a
+#  prestataires_dispos.module: n/a
+#  theme/prestataires_dispos_calendar.tpl.php: n/a
+#  forms_plugins/fields/FormFieldPDisposProduct.class.php: n/a
+#  prestataires_dispos.info: n/a
+#  forms_plugins/widgets/FormWidgetPDisposProduct.class.php: n/a
+#  theme/theme.inc: n/a
+#  forms_plugins/widgets/FormWidgetPDisposSearch.class.php: n/a
+#  scripts/datepicker.js: n/a
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2014-04-10 13:46+0200\n"
+"PO-Revision-Date: 2014-04-10 13:53+0100\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: French <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n>1);\n"
+"X-Generator: Poedit 1.5.4\n"
+
+#: prestataires_dispos.admin.inc:25
+msgid "General settings"
+msgstr "Paramètres généraux"
+
+#: prestataires_dispos.admin.inc:29
+msgid "Display irrelevant results infos anyway"
+msgstr "Afficher les informations des résultats non-pertinents"
+
+#: prestataires_dispos.admin.inc:35
+msgid "Debug mode"
+msgstr "mode debug"
+
+#: prestataires_dispos.admin.inc:41 prestataires_dispos.module:308
+msgid "Save"
+msgstr "Enregistrer"
+
+#: prestataires_dispos.admin.inc:58
+msgid "Parameters have been saved"
+msgstr "Les paramètres ont été sauvegardés"
+
+#: prestataires_dispos.admin.inc:86
+msgid "Node types settings"
+msgstr "Configuration des types de node"
+
+#: prestataires_dispos.admin.inc:98;219
+msgid "Node type"
+msgstr "Type de node"
+
+#: prestataires_dispos.admin.inc:104
+msgid "Add"
+msgstr "Ajouter"
+
+#: prestataires_dispos.admin.inc:119
+msgid "edit form"
+msgstr "Editer le formulaire"
+
+#: prestataires_dispos.admin.inc:120
+msgid "delete"
+msgstr "supprimer"
+
+#: prestataires_dispos.admin.inc:139
+msgid "Dispos form data for '@nodetype'"
+msgstr "Formulaire des données pour le type '@nodetype'"
+
+#: prestataires_dispos.admin.inc:169
+msgid "Configuration has been saved"
+msgstr "La configuration a été sauvegardée"
+
+#: prestataires_dispos.admin.inc:176
+msgid "Are you sure you want to delete dispos settings for '@nodetype' ?"
+msgstr "Êtes-vous sûr de vouloir supprimer la configuration pour '@nodetype' ?"
+
+#: prestataires_dispos.admin.inc:179
+msgid "Delete"
+msgstr "Supprimer"
+
+#: prestataires_dispos.admin.inc:196
+msgid "'@nodetype' has been removed from Prestataires Dispos"
+msgstr "Le type '@nodetype' a été supprimé de Prestataires Dispos"
+
+#: prestataires_dispos.admin.inc:220
+msgid "Operations"
+msgstr "Actions"
+
+#: prestataires_dispos.module:4
+msgid "No information has been set"
+msgstr "Aucune information renseignée"
+
+#: prestataires_dispos.module:5
+msgid "not set"
+msgstr "non renseigné"
+
+#: prestataires_dispos.module:9
+msgid "All products are available"
+msgstr "Tous les produits sont disponibles"
+
+#: prestataires_dispos.module:10
+msgid "free"
+msgstr "disponible"
+
+#: prestataires_dispos.module:14
+msgid "It remains some products available"
+msgstr "Il reste un certain nombre de produits disponibles"
+
+#: prestataires_dispos.module:15
+msgid "some availabilities"
+msgstr "quelques disponibilités"
+
+#: prestataires_dispos.module:19
+msgid "No product is available anymore"
+msgstr "Il n'y a plus aucun produit disponible"
+
+#: prestataires_dispos.module:20
+msgid "full"
+msgstr "complet"
+
+#: prestataires_dispos.module:24
+msgid "Business is closed"
+msgstr "L'établissement est fermé"
+
+#: prestataires_dispos.module:25
+msgid "closed"
+msgstr "fermé"
+
+#: prestataires_dispos.module:72 theme/prestataires_dispos_calendar.tpl.php:10
+msgid "Availabilities"
+msgstr "Disponibilités"
+
+#: prestataires_dispos.module:247
+msgid "Dates"
+msgstr "Dates"
+
+#: prestataires_dispos.module:250
+msgid "From@date"
+msgstr "Du@date"
+
+#: prestataires_dispos.module:251
+msgid "pick a date or a week number from calendar"
+msgstr "sélectionner une date ou un numéro de semaine dans le calendrier"
+
+#: prestataires_dispos.module:258
+msgid "To@date"
+msgstr "Au@date"
+
+#: prestataires_dispos.module:259
+msgid "pick an end date from calendar"
+msgstr "sélectionner une date de fin dans le calendrier"
+
+#: prestataires_dispos.module:259
+msgid "optional"
+msgstr "optionnel"
+
+#: prestataires_dispos.module:266
+msgid "Pick again a date from calendar to change the start date, etc."
+msgstr ""
+"Sélectionner à nouveau une date dans le calendrier pour modifier la date de "
+"début, etc."
+
+#: prestataires_dispos.module:272
+msgid "Pin informations to reuse them for another period"
+msgstr "Epingler les informations pour les réutiliser sur une autre période"
+
+#: prestataires_dispos.module:277
+msgid "Select a type of availability"
+msgstr "Sélectionner un type de disponibilité"
+
+#: prestataires_dispos.module:290
+msgid "Informations"
+msgstr "Informations"
+
+#: prestataires_dispos.module:319
+msgid "You have to select at least one date"
+msgstr "Vous devez sélectionner au moins une date"
+
+#: prestataires_dispos.module:463
+msgid "Informations updated on @date at @hour"
+msgstr "Informations mises à jour le @date à @hour"
+
+#: prestataires_dispos.module:476
+msgid "From @start to @end"
+msgstr "Du @start au @end"
+
+#: prestataires_dispos.module:482
+msgid "On @date"
+msgstr "Le @date"
+
+#: prestataires_dispos.module:864
+msgid "Prestataires dispos : availabilities calendar"
+msgstr "Prestataires dispos : calendrier des dispos"
+
+#: prestataires_dispos.module:869
+msgid "Prestataires dispos : search results infos"
+msgstr "Prestataires dispos : infos des résultats de recherche"
+
+#: prestataires_dispos.module:887
+msgid "Last update : on @date at @hour"
+msgstr "Dernière mise à jour : le @date à @hour"
+
+#: prestataires_dispos.module:901
+msgid "Period has informations"
+msgstr "Des informations existent"
+
+#: prestataires_dispos.module:926
+msgid "Close"
+msgstr "Fermer"
+
+#: prestataires_dispos.module:948
+msgid "Legend"
+msgstr "Légende"
+
+#: prestataires_dispos.module:1012
+msgid "Produit"
+msgstr "Produit"
+
+#: prestataires_dispos.module:1039;1178
+msgid "Search by availabilities"
+msgstr "Recherche par disponibilités"
+
+#: prestataires_dispos.module:1190
+msgid "Sorting by last availabilities update date"
+msgstr "Tri par date de dernière mise à jour des disponibilités"
+
+#: prestataires_dispos.module:1199
+msgid "Sorting by availabilities search relevance"
+msgstr "Tri par pertinence des résultats de la recherche par disponibilités"
+
+#: prestataires_dispos.module:1330
+msgid "Availability type"
+msgstr "Type de disponibilité"
+
+#: prestataires_dispos.module:491
+#: forms_plugins/fields/FormFieldPDisposProduct.class.php:54
+msgid "for 1 people"
+msgid_plural "for @count people"
+msgstr[0] "pour 1 personne"
+msgstr[1] "pour @count personnes"
+
+#: prestataires_dispos.module:97;106 prestataires_dispos.info:0
+msgid "Prestataires dispos"
+msgstr ""
+
+#: prestataires_dispos.module:117
+msgid "Availabilites"
+msgstr "Disponibilités"
+
+#: prestataires_dispos.info:0
+msgid "Provides availabilities functionalities."
+msgstr "Fournis des fonctionnalités pour les disponibilités"
+
+#: prestataires_dispos.info:0
+msgid "Saison d'Or"
+msgstr ""
+
+#: forms_plugins/widgets/FormWidgetPDisposProduct.class.php:14
+msgid "Capacity"
+msgstr "Capacité"
+
+#: forms_plugins/widgets/FormWidgetPDisposProduct.class.php:15
+msgid "people@plurial"
+msgstr "personnes@plurial"
+
+#: forms_plugins/widgets/FormWidgetPDisposProduct.class.php:22
+msgid "Display capacity in label"
+msgstr "Afficher la capacité dans l'étiquette"
+
+#: forms_plugins/widgets/FormWidgetPDisposProduct.class.php:49
+msgid "Qty."
+msgstr "Qté."
+
+#: forms_plugins/widgets/FormWidgetPDisposProduct.class.php:56
+#: theme/theme.inc:57
+msgid "Comment"
+msgstr "Commentaire"
+
+#: forms_plugins/widgets/FormWidgetPDisposProduct.class.php:57
+msgid "A short remark (max : @num chars)"
+msgstr "Courte remarque (max : @num caractères)"
+
+#: forms_plugins/widgets/FormWidgetPDisposSearch.class.php:13
+msgid "\"Undefined availabilities\" behavior"
+msgstr "Les disponibilités de type \"non renseigné\""
+
+#: forms_plugins/widgets/FormWidgetPDisposSearch.class.php:15
+msgid "must be treated as invalid"
+msgstr "doivent être considérées comme invalides"
+
+#: forms_plugins/widgets/FormWidgetPDisposSearch.class.php:16
+msgid "must be treated as valid"
+msgstr "doivent être considérées comme valides"
+
+#: forms_plugins/widgets/FormWidgetPDisposSearch.class.php:58
+msgid "For@npeople"
+msgstr "Pour@npeople"
+
+#: forms_plugins/widgets/FormWidgetPDisposSearch.class.php:59
+msgid "people@optionalplurial"
+msgstr "personne(s)"
+
+#: forms_plugins/widgets/FormWidgetPDisposSearch.class.php:67
+msgid "Consecutive availabilities in the whole period"
+msgstr "Disponibilités consécutives sur l'ensemble de la période"
+
+#: scripts/datepicker.js:0;0
+msgid "Sunday"
+msgstr "Dimanche"
+
+#: scripts/datepicker.js:0
+msgid "Monday"
+msgstr "Lundi"
+
+#: scripts/datepicker.js:0
+msgid "Tuesday"
+msgstr "Mardi"
+
+#: scripts/datepicker.js:0
+msgid "Wednesday"
+msgstr "Mercredi"
+
+#: scripts/datepicker.js:0
+msgid "Thursday"
+msgstr "Jeudi"
+
+#: scripts/datepicker.js:0
+msgid "Friday"
+msgstr "Vendredi"
+
+#: scripts/datepicker.js:0
+msgid "Saturday"
+msgstr "Samedi"
+
+#: scripts/datepicker.js:0;0
+msgid "Sun"
+msgstr "dim"
+
+#: scripts/datepicker.js:0
+msgid "Mon"
+msgstr "lun"
+
+#: scripts/datepicker.js:0
+msgid "Tue"
+msgstr "mar"
+
+#: scripts/datepicker.js:0
+msgid "Wed"
+msgstr "mer"
+
+#: scripts/datepicker.js:0
+msgid "Thu"
+msgstr "jeu"
+
+#: scripts/datepicker.js:0
+msgid "Fri"
+msgstr "ven"
+
+#: scripts/datepicker.js:0
+msgid "Sat"
+msgstr "sam"
+
+#: scripts/datepicker.js:0;0
+msgid "Su"
+msgstr "Di"
+
+#: scripts/datepicker.js:0
+msgid "Mo"
+msgstr "Lu"
+
+#: scripts/datepicker.js:0
+msgid "Tu"
+msgstr "Ma"
+
+#: scripts/datepicker.js:0
+msgid "We"
+msgstr "Me"
+
+#: scripts/datepicker.js:0
+msgid "Th"
+msgstr "Je"
+
+#: scripts/datepicker.js:0
+msgid "Fr"
+msgstr "Ve"
+
+#: scripts/datepicker.js:0
+msgid "Sa"
+msgstr "Sa"
+
+#: scripts/datepicker.js:0
+msgid "January"
+msgstr "Janvier"
+
+#: scripts/datepicker.js:0
+msgid "February"
+msgstr "Février"
+
+#: scripts/datepicker.js:0
+msgid "March"
+msgstr "Mars"
+
+#: scripts/datepicker.js:0
+msgid "April"
+msgstr "Avril"
+
+#: scripts/datepicker.js:0;0
+msgid "May"
+msgstr "Mai"
+
+#: scripts/datepicker.js:0
+msgid "June"
+msgstr "Juin"
+
+#: scripts/datepicker.js:0
+msgid "July"
+msgstr "Juillet"
+
+#: scripts/datepicker.js:0
+msgid "August"
+msgstr "Août"
+
+#: scripts/datepicker.js:0
+msgid "September"
+msgstr "Septembre"
+
+#: scripts/datepicker.js:0
+msgid "October"
+msgstr "Octobre"
+
+#: scripts/datepicker.js:0
+msgid "November"
+msgstr "Novembre"
+
+#: scripts/datepicker.js:0
+msgid "December"
+msgstr "Décembre"
+
+#: scripts/datepicker.js:0
+msgid "Jan"
+msgstr "Jan"
+
+#: scripts/datepicker.js:0
+msgid "Feb"
+msgstr "Fév"
+
+#: scripts/datepicker.js:0
+msgid "Mar"
+msgstr "Mar"
+
+#: scripts/datepicker.js:0
+msgid "Apr"
+msgstr "Avr"
+
+#: scripts/datepicker.js:0
+msgid "Jun"
+msgstr "Juin"
+
+#: scripts/datepicker.js:0
+msgid "Jul"
+msgstr "Juil"
+
+#: scripts/datepicker.js:0
+msgid "Aug"
+msgstr "Aoû"
+
+#: scripts/datepicker.js:0
+msgid "Sep"
+msgstr "Sep"
+
+#: scripts/datepicker.js:0
+msgid "Oct"
+msgstr "Oct"
+
+#: scripts/datepicker.js:0
+msgid "Nov"
+msgstr "Nov"
+
+#: scripts/datepicker.js:0
+msgid "Dec"
+msgstr "Déc"
+
+#: scripts/datepicker.js:0
+msgid "wk@calendar"
+msgstr "sem.@calendar"
+
+#: theme/theme.inc:19
+msgid "There are additional availabilities. Please, see detailed page."
+msgstr "D'autres disponibilités existent. Voir fiche détaillée."
+
+#: theme/theme.inc:48
+msgid "No comment"
+msgstr "Pas de commentaire"
+
+#: theme/theme.inc:55
+msgid "Product"
+msgstr "Produit"
+
+#: theme/theme.inc:56
+msgid "Remaining"
+msgstr "Reste"

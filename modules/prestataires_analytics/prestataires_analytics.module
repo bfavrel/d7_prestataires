@@ -1,0 +1,941 @@
+<?php
+
+/*
+ * Implementation of hook_boot()
+ */
+function prestataires_analytics_boot() {
+    require_once 'prestataires_analytics.help.inc';
+}
+
+function prestataires_analytics_prestataires_infos() {
+
+    return array(
+        'analytics' => array(
+            'label' => t("Google Analytics"),
+            'group' => 'nodes',
+            'filter_callback' => 'prestataires_analytics_filter_callback',
+        ),
+    );
+}
+function prestataires_analytics_filter_callback() {
+    return true;
+}
+
+function prestataires_analytics_libraries_info() {
+
+    $libraries = array();
+
+    $libraries['gapi'] = array(
+        'name' => "Google Analytics PHP Interface (GAPI)",
+        'vendor url' => 'http://code.google.com/p/gapi-google-analytics-php-interface/',
+        'download url' => 'http://code.google.com/p/gapi-google-analytics-php-interface/',
+        'version callback' => '_prestataires_analytics_libraries_version',
+        'version arguments' => array(),
+        'files' => array(
+            'php' => array(
+                'gapi.class.php',
+            ),
+        ),
+    );
+
+    return $libraries;
+}
+
+function _prestataires_analytics_libraries_version() {
+    return true;
+}
+
+function prestataires_analytics_load_gapi() {
+
+    $lib = libraries_load('gapi');
+
+    if(array_key_exists('error message', $lib) && !empty($lib['error message'])) {
+        drupal_set_message($lib['error message'], 'error');
+        return false;
+    }
+
+    return true;
+}
+
+function prestataires_analytics_menu() {
+
+    $items = array();
+
+    $items['admin/config/prestataires/settings/analytics'] = array(
+        'title' => "Prestataires Analytics",
+        'type' => MENU_LOCAL_TASK,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('prestataires_analytics_settings_form'),
+        'access arguments' => array('configure prestataires'),
+        'file' => 'prestataires_analytics.admin.inc',
+        'weight' => 1,
+    );
+
+    $items['user/%/analytics'] = array( // uid
+        'title' => "Statistics",
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('prestataires_analytics_stats_form', 1),
+        'access callback' => 'prestataires_analytics_access',
+        'access arguments' => array(1, null, null),
+        'type' => MENU_LOCAL_TASK
+    );
+
+    $items['node/%node/analytics'] = array(
+        'title' => "Statistics",
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('prestataires_analytics_stats_form', null, 1),
+        'access callback' => 'prestataires_analytics_access',
+        'access arguments' => array(null, null, 1),
+        'type' => MENU_LOCAL_TASK,
+        'weight' => 4,
+    );
+
+    return $items;
+}
+
+/*
+ * Implementation of hook_user_categories()
+ * Add a new local task to user form.
+ */
+function prestataires_analytics_user_categories() {
+    return array(
+        array(
+            'name' => "analytics",
+            'title' => t("Stats params"),
+            'access callback' => 'prestataires_analytics_user_params_access',
+            'access arguments' => array(1),
+            'weight' => 2,
+        ),
+    );
+}
+
+/*
+ * Implementation of hook_menu_alter()
+ * Configure callback for the newly created categorie 'analytics'
+ * (@see prestataires_analytics_user_categories())
+ */
+function prestataires_analytics_menu_alter(&$callbacks) {
+    $callbacks['user/%user_category/edit/analytics']['page arguments'] = array('prestataires_analytics_user_admin_form', 1);
+    $callbacks['user/%user_category/edit/analytics']['file'] = 'prestataires_analytics.admin.inc';
+    $callbacks['user/%user_category/edit/analytics']['file path'] = drupal_get_path('module', 'prestataires_analytics');
+}
+
+function prestataires_analytics_user_params_access($account) {
+    return user_access('administer prestataires') && prestataires_analytics_access($account->uid);
+}
+
+function prestataires_analytics_access($uid = null, $account = null, $node = null) {
+
+    if(!empty($account)) {
+        $uid = $account->uid;
+    }
+
+    global $user;
+    if($user->uid == 0) {return false;} // anonymous non allowed
+
+    $settings = variable_get('prestataires_analytics', array());
+    if(!array_key_exists('account', $settings)) {return false;}
+
+    if(user_access('administer prestataires') != true) {
+
+        if($uid != null && $user->uid != $uid) { // on ne peut voir que les stats de son propre compte
+
+            return false;
+
+        } elseif($node != null) {
+
+            // on ne peut voir les stats que de son propre node
+            $owner = db_query("SELECT uid FROM {prestataires} WHERE nid=?", array($node->nid))->fetchColumn();
+            if($user->uid != $owner) {return false;}
+
+        }
+    }
+
+    $args = array();
+    $where = array();
+
+    if($uid != null) {
+        $where[] = "uid=?";
+        $args[] = $uid;
+    }
+
+    if($node != null) {
+        $where[] = "(nid=? OR nid=?)";
+        $args[] = $node->nid;
+        $args[] = $node->tnid;
+    }
+
+    $where = " " . implode(' AND ', $where);
+
+    $results = db_query("SELECT params FROM {prestataires} WHERE" . $where, $args);
+
+    while($row = $results->fetchObject()) {
+        $params = unserialize($row->params);
+
+        if(array_key_exists('analytics@prestataires_analytics', $params['functionalities']) && $params['functionalities']['analytics@prestataires_analytics'] == true) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function prestataires_analytics_stats_form($form, &$form_state, $uid = null, $node = null) {
+
+    $settings = variable_get('prestataires_analytics', array());
+    $stats_configs = parse_ini_string($settings['stats']['config'], true);
+
+    $nodes_list = array();
+
+    if(!empty($uid)) {
+
+        $languages = language_list();
+
+        $results = db_query("SELECT nid, params FROM {prestataires} WHERE uid=?", array($uid));
+
+        while($row = $results->fetchObject()) {
+
+            $params = unserialize($row->params);
+
+            if(array_key_exists('analytics@prestataires_analytics', $params['functionalities']) && $params['functionalities']['analytics@prestataires_analytics'] == true) {
+
+                $sub_results = db_query(
+                    "SELECT nid, language, title
+                    FROM {node}
+                    WHERE (nid=:nid OR tnid=:nid)
+                    AND title!=''
+                    ORDER BY language='fr' DESC, language DESC",
+                    array(':nid' => $row->nid)
+                );
+
+                while($sub_row = $sub_results->fetchObject()) {
+
+                    $nodes_list[$sub_row->nid] = $sub_row->title .
+                        ($sub_row->language != 'fr' && $sub_row->language != 'und' ? " (" . t($languages[$sub_row->language]->name) . ")" : "");
+
+                }
+            }
+        }
+    }
+
+    global $user;
+    $stat_options = array();
+
+    foreach($stats_configs as $label => $config) {
+
+        if($config['private'] == true
+            && !user_access('administer prestataires')
+            && !array_key_exists('3', $user->roles)) { // 3 : 'administrator'
+            continue;
+        }
+
+        $stats_configs[$label]['label'] = t($label);
+
+        if($config['expose'] != '#nodes') {
+
+            $nids = empty($node) ? array_keys($nodes_list) : array($node->nid);
+
+            if(!empty($config['expose'])) {
+                $exposed_fields = _prestataires_analytics_extract_exposed_fields($config['expose']);
+                $stats_configs[$label]['exposed_fields'] = $exposed_fields;
+
+                $exposed_values = array();
+
+                foreach($exposed_fields as $exposed_field) {
+                    $values = _prestataires_analytics_gather_field_values($exposed_field, $nids);
+                    $exposed_values = array_merge($exposed_values, $values);
+                }
+
+                $stats_configs[$label]['exposed_values'] = $exposed_values;
+
+                if(!empty($exposed_values)) {
+
+                    $exposed_values = array_unique($exposed_values);
+                    sort($exposed_values);
+
+                    if(count($exposed_values) > 1) {
+                        $label_translated = "-- " . t($label);
+
+                        $stat_options[$label_translated] = array(
+                            $label . '|#all' => "- " . t("All") . " -",
+                        );
+
+                        foreach($exposed_values as $value) {
+                            $stat_options[$label_translated][$label . '|' . $value] = $value;
+                        }
+
+                        if(count($stat_options[$label_translated]) == 2) {
+                            unset($stat_options[$label_translated][$label . '|#all']);
+                        }
+                    } else {
+                        $stat_options[$label . '|' . $exposed_values[0]] = "-- " . t($label);
+                    }
+
+                }
+            } elseif(empty($node)) {
+                $stat_options[$label . '|#all'] = "-- " . t($label);
+            }
+
+        } elseif(empty($node)) {
+
+            $label_translated = "-- " . t($label);
+
+            $stat_options[$label_translated] = array(
+                $label . '|#all' => "- " . t("All") . " -",
+            );
+
+            foreach($nodes_list as $nid => $title) {
+                $stat_options[$label_translated][$label . '|' . $nid] = $title;
+            }
+
+            if(count($stat_options[$label_translated]) == 2) {
+                unset($stat_options[$label_translated][$label . '|#all']);
+            }
+
+        } elseif(!empty($node) && !empty($config['expose'])) {
+            $stat_options[$label . '|' . $node->nid] = "-- " . t($label);
+        }
+
+    }
+
+    $form = array(
+
+        'stat' => array(
+            '#type' => 'select',
+            '#title' => t("Statistics"),
+            '#options' => $stat_options,
+            '#default_value' => array_key_exists('values', $form_state) ? $form_state['values']['stat'] : null,
+        ),
+
+        'period' => array(
+            '#type' => 'select',
+            '#title' => t("Period"),
+            '#options' => array(
+                'current_week|date' => t("Current week"),
+                'last_week|date' => t("Last week"),
+                'current_month|date' => t("Current month"),
+                'last_30_days|date' => t("Last 30 days"),
+                'last_month|date' => t("Last month"),
+                'current_year|isoWeek' => t("Current year (by weeks)"),
+                'current_year|month' => t("Current year (by months)"),
+                'last_year|isoWeek' => t("Last year (by weeks)"),
+                'last_year|month' => t("Last year (by months)"),
+                'custom' => "- " . t("Custom period") . " -",
+            ),
+            '#default_value' => array_key_exists('values', $form_state) ? $form_state['values']['period'] : 'current_month',
+        ),
+
+        'dates_wrapper' => array(
+            '#type' => 'container',
+
+            '#states' => array(
+                'visible' => array(
+                    ':input[name="period"]' => array('value' => 'custom'),
+                ),
+            ),
+
+            'start_date' => array(
+                '#type' => 'date_popup',
+                '#title' => t("Start date"),
+                '#date_label_position' => 'none',
+                '#date_format' => 'd/m/Y',
+                '#date_year_range' => '0:-2',
+                '#default_value' => array_key_exists('values', $form_state) ? $form_state['values']['start_date'] : null,
+            ),
+
+            'end_date' => array(
+                '#type' => 'date_popup',
+                '#title' => t("End date"),
+                '#date_label_position' => 'none',
+                '#date_format' => 'd/m/Y',
+                '#date_year_range' => '0:-2',
+                '#default_value' => array_key_exists('values', $form_state) ? $form_state['values']['end_date'] : date('Y-m-d'),
+            ),
+        ),
+
+        'display' => array(
+            '#type' => 'submit',
+            '#value' => t("Display graph"),
+            '#ajax' => array(
+                'callback' => 'prestataires_analytics_ajax_chart_callback',
+                'wrapper' => 'analytics-chart-wrapper',
+                'effect' => 'none',
+                'event' => 'click',
+                'method' => 'replace',
+                'progress' => array(
+                    'type' => 'throbber',
+                    'message' => t("Building chart"),
+                ),
+            ),
+        ),
+
+        'chart_wrapper' => array(
+            '#type' => 'container',
+            '#id' => 'analytics-chart-wrapper',
+
+            'chart' => array(
+                '#type' => 'markup',
+            ),
+        ),
+    );
+
+    drupal_add_js('https://www.google.com/jsapi', array('type' => 'external', 'scope' => 'header'));
+    drupal_add_js(drupal_get_path('module', 'prestataires_analytics') . '/js/prestataires_analytics.js', array('scope' => 'header'));
+
+    if(array_key_exists('values', $form_state)) {
+
+        $stat = explode('|', $form_state['values']['stat']);
+        $stat_config = $stats_configs[$stat[0]];
+        $stat_param = $stat[1];
+
+        $period_processed = prestataires_analytics_process_period(
+            $form_state['values']['period'],
+            $form_state['values']['start_date'],
+            $form_state['values']['end_date']
+        );
+
+        $filter_processed = prestataires_analytics_process_filter(
+            $stat_param,
+            $stat_config,
+            !empty($nodes_list) ? array_keys($nodes_list) : array($node->nid)
+        );
+
+        if($settings['stats']['debug'] == true && module_exists('devel')) {
+
+            dpm($form_state['values']['stat'], "stat selected");
+            dpm($filter_processed, "filter");
+        }
+
+        if($filter_processed === false) {
+
+            $form['chart_wrapper']['chart'] = array(
+                '#prefix' => "<div id='prestataires-analytics-error-message'>",
+                '#markup' => t("No available statistics for '@stat_label'", array('@stat_label' => $stat_config['label'])),
+                '#suffix' => "</div>",
+            );
+
+        } else {
+
+            $gga_data = prestataires_analytics_get_gga_data($stat_config['metric'], $period_processed, $filter_processed);
+
+            $chart_data = array(
+                'rows' => array_values($gga_data['data_rows']),
+                'dimension' => $period_processed['dimension'],
+                'title' => $stat_config['label'],
+                'xAxisTitle' => $period_processed['x_axis_title'],
+                'yAxisTitle' => $stat_config['label'],
+                'color' => $settings['chart']['chart_color'],
+                'fontColor' => $settings['chart']['font_color'],
+            );
+
+            $form['chart_wrapper']['chart']['#markup'] = theme('prestataires_analytics_chart', array(
+                'data' => json_encode($chart_data),
+                'total' => t("Total on period : @total", array('@total' => $gga_data['total'])),
+            ));
+        }
+    }
+
+    return $form;
+}
+
+function prestataires_analytics_ajax_chart_callback($form, &$form_state) {
+    return $form['chart_wrapper'];
+}
+
+function prestataires_analytics_stats_form_submit($form, &$form_state) {
+    $form_state['rebuild'] = true;
+}
+
+function prestataires_analytics_get_gga_data($metric, $period, $filter) {
+
+    $settings = variable_get('prestataires_analytics', array());
+    prestataires_analytics_load_gapi();
+
+    $certificate = file_load($settings['account']['certificate']);
+
+    $ga = new gapi($settings['account']['account_mail'], $certificate->uri);
+
+    $ga->requestReportData(
+        $settings['account']['profile_id'],
+        array('year', $period['dimension']), // abscisse,
+        array($metric),
+        array('year', $period['dimension']),
+        $filter,
+        $period['start_date'],
+        $period['end_date'],
+        1,
+        1000
+    );
+
+    $get_dimension = 'get' . ucfirst($period['dimension']);
+    $get_metric = 'get' . ucfirst($metric);
+
+    $data_rows = $period['data_array'];
+    $total = 0;
+
+    foreach($ga->getResults() as $result) {
+        $value = $result->{$get_metric}();
+        $total += $data_rows[$result->getyear() . $result->{$get_dimension}()][1] = max($data_rows[$result->getyear() . $result->{$get_dimension}()][1], $value);
+    }
+
+    return array(
+        'data_rows' => $data_rows,
+        'total' => $total,
+    );
+}
+
+function prestataires_analytics_process_filter($stat_param, $stat_config, $nids_pool) {
+
+    $parsed_filter = _prestataires_analytics_extract_fields_from_filter($stat_config['filter']);
+
+    $values_nids = array();
+
+    if($stat_config['expose'] == '#nodes' && $stat_param != '#all') {
+        $values_nids = array($stat_param);
+    } elseif($stat_param == '#all') {
+        $values_nids = $nids_pool;
+    }
+
+    $filter = $stat_config['filter'];
+
+    foreach($parsed_filter as $member) {
+
+        $original_member = $member[0];
+        $prefix = $member[1];
+        $fields = $member[2];
+        $suffix = $member[3];
+
+        $values = array();
+
+        foreach($fields as $fieldname) {
+
+            if($fieldname == '#exposed') {
+
+                if($stat_param == '#all') {
+                    $values = array_merge($values, $stat_config['exposed_values']);
+                } else {
+                    $values[] = $stat_param;
+                };
+
+                continue;
+            }
+
+            if($stat_config['expose'] != '#nodes' && $stat_param != '#all') {
+                $values_nids = _prestataires_analytics_filter_nids_list_by_fields_value($stat_config['exposed_fields'], $stat_param, $nids_pool);
+            }
+
+            $values = array_merge($values, _prestataires_analytics_gather_field_values($fieldname, $values_nids));
+
+        }
+
+        if(empty($values)) {
+            return false;
+        }
+
+        $values = array_unique($values);
+
+        $sub_members = array();
+
+        foreach($values as $value) {
+
+            $sub_members[] = trim($prefix . $value . $suffix);
+        }
+
+        $final_member = implode(' || ', $sub_members);
+
+        $filter = str_replace($original_member, $final_member, $filter);
+    }
+
+    return $filter;
+}
+
+function _prestataires_analytics_filter_nids_list_by_fields_value($fields, $value, $nids_pool) {
+
+    $nids = array();
+
+    foreach($fields as $fieldname) {
+
+        $infos = field_info_field($fieldname);
+        $columns = reset($infos['storage']['details']['sql']['FIELD_LOAD_CURRENT']);
+
+        $column = $columns['value'];
+        $table = key($infos['storage']['details']['sql']['FIELD_LOAD_CURRENT']);
+
+        $results = db_query(
+            "SELECT DISTINCT entity_id FROM {" . $table . "} WHERE " . $column . "=:value AND entity_id IN(:nids)",
+            array(':value' => $value, ':nids' => $nids_pool)
+        );
+
+        while($row = $results->fetchObject()) {
+            $nids[] = $row->entity_id;
+        }
+    }
+
+    $nids = array_unique($nids);
+
+    return $nids;
+}
+
+function _prestataires_analytics_gather_field_values($fieldname, $nids) {
+
+    $data_values = &drupal_static(__FUNCTION__, array());
+
+    $values = array();
+
+    switch($fieldname) {
+
+        case '#title':
+
+            $results = db_query("SELECT DISTINCT title FROM {node} WHERE nid IN(:nids)", array(':nids' => $nids));
+
+            while($row = $results->fetchObject()) {
+                $values[] = $row->title;
+            }
+
+            break;
+
+        case '#path':
+
+            $results = db_query("SELECT path FROM {prestataires_analytics_nodes_paths} WHERE nid IN(:nids)", array(':nids' => $nids));
+
+            while($row = $results->fetchObject()) {
+                $values[] = $row->path;
+            }
+
+            break;
+
+        case '#nid':
+            $values = $nids;
+            break;
+
+        default:
+
+            $infos = field_info_field($fieldname);
+            $columns = reset($infos['storage']['details']['sql']['FIELD_LOAD_CURRENT']);
+
+            $column = $columns['value'];
+            $table = key($infos['storage']['details']['sql']['FIELD_LOAD_CURRENT']);
+
+            $results = db_query("SELECT DISTINCT " . $column . " FROM {" . $table . "} WHERE entity_id IN(:nids)", array(':nids' => $nids));
+
+            while($row = $results->fetchObject()) {
+                $values[] = $row->{$column};
+            }
+
+            foreach($nids as $nid) {
+
+                if(!array_key_exists($nid, $data_values)) {
+                    $data = prestataires_get_node_data($nid, 'prestataires_analytics');
+                    $data_values[$nid] = (array)$data['additional_values'];
+                }
+
+                if(array_key_exists($fieldname, $data_values[$nid])) {
+                    $values[] = $data_values[$nid][$fieldname];
+                }
+            }
+    }
+
+    $values = array_unique($values);
+
+    return $values;
+}
+
+function _prestataires_analytics_extract_exposed_fields($expose) {
+
+    if($expose == '#nodes') {return array();}
+
+    $parsed = explode(',', $expose);
+
+    array_walk($parsed, function(&$val) {
+        $val = trim($val);
+    });
+
+    return $parsed;
+}
+
+function _prestataires_analytics_extract_fields_from_filter($filter) {
+
+    $parsed = array();
+
+    preg_match_all(
+        "#([a-zA-Z0-9]+[\s]*(?:==|\!=|>|<|>=|>=|=~|=@|\!@)[\s](?:[^\{](?!==|\!=|>|<|>=|>=|=~|=@|\!@))*)\{([^\}]+)\}((?:(?!&&|\|\|))*)#",
+        $filter,
+        $parsed,
+        PREG_SET_ORDER
+    );
+
+    foreach($parsed as $key => $member) {
+
+        $parsed[$key][2] = explode(',', $member[2]);
+
+        array_walk($parsed[$key][2], function(&$val) {
+            $val = trim($val);
+        });
+    }
+
+    return $parsed;
+}
+
+function prestataires_analytics_process_period($period, $start_date_ymd = '', $end_date_ymd = '') {
+
+    $period = explode('|', $period);
+    $range = $period[0];
+    $dimension = $period[1];
+
+    switch($range) {
+
+        case 'current_week':
+
+            $end_date = DateTime::createFromFormat('U', time());
+            $end_date->setTimezone(new DateTimeZone('Europe/Paris'));
+
+            $start_date = clone $end_date;
+            $start_date->modify('last monday');
+
+            break;
+
+        case 'last_week':
+
+            $end_date = new DateTime();
+            $end_date->modify('last sunday');
+
+            $start_date = clone $end_date;
+            $start_date->modify('-6 days');
+
+            break;
+
+        case 'current_month':
+
+            $end_date = DateTime::createFromFormat('U', time());
+            $end_date->setTimezone(new DateTimeZone('Europe/Paris'));
+
+            $start_date = clone $end_date;
+            $start_date->modify('first day of this month');
+
+            break;
+
+        case 'last_30_days':
+
+            $end_date = DateTime::createFromFormat('U', time());
+            $end_date->setTimezone(new DateTimeZone('Europe/Paris'));
+
+            $start_date = clone $end_date;
+            $start_date->modify('-1 month');
+
+            break;
+
+        case 'last_month':
+
+            $start_date = new DateTime();
+            $start_date->modify('first day of last month');
+
+            $end_date = new DateTime();
+            $end_date->modify('last day of last month');
+
+            break;
+
+        case 'current_year':
+
+            $end_date = DateTime::createFromFormat('U', time());
+            $end_date->setTimezone(new DateTimeZone('Europe/Paris'));
+
+            /* // ne fonctionne qu'avec PHP >= 5.3.6
+            $start_date = clone $end_date;
+            $start_date->modify('first day of january this year');
+            */
+
+            $start_date = DateTime::createFromFormat('Y-m-d', $end_date->format('Y') . '-01-01');
+
+            break;
+
+        case 'last_year':
+
+            /* // ne fonctionne qu'avec PHP >= 5.3.6
+            $start_date = new DateTime();
+            $start_date->modify('first day of january last year');
+
+            $end_date = new DateTime();
+            $end_date->modify('last day of december last year');
+            */
+
+            $now = $end_date = DateTime::createFromFormat('U', time());
+            $now->modify('-1 year');
+            $start_date = DateTime::createFromFormat('Y-m-d', $now->format('Y') . '-01-01');
+            $end_date = DateTime::createFromFormat('Y-m-d', $now->format('Y') . '-12-31');
+
+            break;
+
+        case 'custom':
+
+            if(empty($start_date_ymd) || empty($end_date_ymd)) {
+
+                return "<div id='analytics-error'>" . t("Invalid dates") . "</div>";
+            }
+
+            $start = DateTime::createFromFormat('Y-m-d', $start_date_ymd);
+            $end = DateTime::createFromFormat('Y-m-d', $end_date_ymd);
+
+            $difference = $start->diff($end);
+
+            $inverted = $difference->format('%r');
+
+            if($inverted == '-') {
+                $start_date = $end;
+                $end_date = $start;
+            } else {
+                $start_date = $start;
+                $end_date = $end;
+            }
+
+            $days = $difference->format('%a');
+
+            if($days > 365) {
+                $dimension = 'month';
+            } elseif($days > 62) {
+                $dimension = 'isoWeek';
+            } else {
+                $dimension = 'date';
+            }
+
+            break;
+    }
+
+    // correctif bug PHP de la date de fin incluse ou non
+    $start_date->setTime(0, 0, 0);
+    $end_date->setTime(0, 0, 0);
+
+    $data_end_date = clone $end_date;
+    $data_end_date->modify('+1 day');
+    $data_dates = new DatePeriod($start_date, new DateInterval('P1D'), $data_end_date);
+
+    $data_array = array();
+
+    switch($dimension) {
+
+        case 'date':
+            foreach($data_dates as $data_date) {
+                $data_array[$data_date->format('YYmd')] = array($data_date->format('d/m/Y'), 0); // 'YY' à cause de "$dimensions = array('isoYear', $dimension);"
+            }
+
+            $x_axis_title = t("Days");
+            break;
+
+        case 'isoWeek':
+            foreach($data_dates as $data_date) {
+                $data_array[$data_date->format('YW')] = array(t("Wk.@week @year", array('@week' => $data_date->format('W'), '@year' =>$data_date->format('Y'))), 0);
+            }
+
+            $x_axis_title = t("Weeks");
+            break;
+
+        case 'month':
+            foreach($data_dates as $data_date) {
+                $data_array[$data_date->format('Ym')] = array(t($data_date->format('M')) . ". " . $data_date->format('Y'), 0);
+            }
+
+            $x_axis_title = t("Months");
+            break;
+    }
+
+    return array(
+        'data_array' => $data_array,
+        'dimension' => $dimension,
+        'start_date' => $start_date->format('Y-m-d'),
+        'end_date' => $end_date->format('Y-m-d'),
+        'x_axis_title' => $x_axis_title,
+    );
+}
+
+function prestataires_analytics_cron($forced = false) {
+
+    $settings = variable_get('prestataires_analytics', array());
+    if(empty($settings) && $forced == false) {return;}
+
+    $last_execution_time = variable_get('prestataires_analytics_last_cron', 0);
+
+    if($forced == false && !empty($last_execution_time)) {
+
+        $launch = false;
+
+        $time_windows = explode('|', $settings['cron']['time_windows']);
+        array_walk($time_windows, function(&$val){
+            $val = explode('-', $val);
+        });
+
+        $last_execution = DateTime::createFromFormat('U', $last_execution_time);
+        $last_execution->setTimezone(new DateTimeZone('Europe/Paris'));
+        $last_execution_hour = $last_execution->format('G');
+        $last_execution_day = $last_execution->format('j');
+
+        $now = DateTime::createFromFormat('U', time());
+        $now->setTimezone(new DateTimeZone('Europe/Paris'));
+        $hour = $now->format('G');
+        $day = $now->format('j');
+
+        foreach($time_windows as $window) {
+
+            // on est actuellement dans une tranche programmée
+            if($hour >= $window[0] && $hour < $window[1]) {
+
+                // la dernière mise à jour a été faite aujourd'hui
+                if($last_execution_day == $day) {
+
+                    // elle a déjà eu lieu pour cette tranche horaire
+                    if($last_execution_hour >= $window[0]) {
+                        break;
+                    } else {
+                        $launch = true;
+                        break;
+                    }
+
+                // la dernière mise à jour ne date pas d'aujourd'hui
+                } else {
+                    $launch = true;
+                    break;
+                }
+            }
+        }
+
+        if($launch == false) {return;}
+    }
+
+    $languages = language_list();
+
+    $results = db_query("SELECT nid, params FROM {prestataires}");
+
+    while($row = $results->fetchObject()) {
+        $params = unserialize($row->params);
+
+        if(!array_key_exists('analytics@prestataires_analytics', (array)$params['functionalities']) || $params['functionalities']['analytics@prestataires_analytics'] != true) {
+            continue;
+        }
+
+        $sub_results = db_query("SELECT nid, language FROM {node} WHERE (nid=:nid OR tnid=:nid) AND title!=''", array(':nid' => $row->nid));
+
+        while($sub_row = $sub_results->fetchObject()) {
+            $path = url('node/' . $sub_row->nid, array('language' => $languages[$sub_row->language]));
+
+            db_query("REPLACE INTO {prestataires_analytics_nodes_paths} SET nid=?, path=?", array($sub_row->nid, $path));
+        }
+    }
+
+    variable_set('prestataires_analytics_last_cron', time());
+}
+
+function prestataires_analytics_theme() {
+
+    $path = drupal_get_path('module', 'prestataires_analytics');
+
+    $theme = array(
+        'prestataires_analytics_chart' => array(
+            'template' => 'prestataires_analytics_chart',
+            'path' => $path . '/theme',
+            'variables' => array(
+                'data' => null,
+                'total' => null,
+            ),
+        ),
+    );
+
+    return $theme;
+}

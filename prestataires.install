@@ -1,0 +1,76 @@
+<?php
+
+/**
+ * Implementation of hook_install().
+ */
+function prestataires_install() {
+
+    $role = new stdClass();
+    $role->name = 'prestataire';
+    user_role_save($role);
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function prestataires_schema() {
+
+    $schema['prestataires'] = array(
+
+        'description' => "Associates nodes and users, and store prestataires modules params",
+
+        'fields' => array(
+            'uid' => array(
+                'description' => 'user id',
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+
+            'nid' => array(
+                'description' => "The node's id.",
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+            ),
+
+            'params' => array(
+                'description' => "Module's settings.",
+				'type' => 'text',
+				'not null' => true,
+			),
+        ),
+
+        'primary key' => array('uid', 'nid'),
+    );
+
+    $schema['prestataires_nodes_data'] = array(
+
+        'description' => "Modules data associated to nodes",
+
+        'fields' => array(
+            'nid' => array(
+                'description' => "The node's id.",
+                'type' => 'int',
+                'not null' => true,
+                'unsigned' => true,
+            ),
+
+            'module' => array(
+				'type' => 'varchar',
+				'length' => '255',
+				'not null' => true,
+				'description' => "The module which provide data.",
+			),
+
+            'data' => array(
+				'type' => 'text',
+				'description' => "The module's data.",
+			),
+        ),
+
+        'primary key' => array('nid', 'module'),
+    );
+
+    return $schema;
+}

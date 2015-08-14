@@ -1,0 +1,199 @@
+// ne concerne que le .css :
+/* NE PAS EDITER : @see prestataires_dispos.admin.scss */
+
+@import 'compass/css3';
+@import '_datepicker';
+
+// ----- DISPOS COLORS -----
+
+.pdispos_undefined {
+    background-color: #dddddd;
+}
+.pdispos_undefined a span {}
+
+.pdispos_free {
+    background-color: #66ff66;
+}
+.pdispos_free a span {}
+
+.pdispos_some {
+    background-color: #ffbb66;
+}
+.pdispos_some a span {
+    color: #ffffff;
+}
+
+.pdispos_full {
+    background-color: #ff6666;
+}
+.pdispos_full a span {
+    color: #ffffff;
+}
+
+.pdispos_closed {
+    background-color: #666666;
+}
+.pdispos_closed a span {
+    color: #ffffff;
+}
+
+// ----- INFOS CLASSES -----
+
+.pdispos_infos_unique {
+    background-image: image-url('infos_unique.png');
+    background-position: center top;
+    background-repeat: no-repeat;
+}
+.pdispos_infos_start {
+    background-image: image-url('infos_start.png');
+    background-position: left top;
+    background-repeat: no-repeat;
+}
+.pdispos_infos {
+    background-image: image-url('infos.png');
+    background-position: left top;
+    background-repeat: repeat-x;
+}
+.pdispos_infos_end {
+    background-image: image-url('infos_end.png');
+    background-position: right top;
+    background-repeat: no-repeat;
+}
+
+// ----- CALENDAR -----
+
+div.datepicker {
+    th.datepickerWeek a:hover {
+        cursor: default;
+        color: $typo_color;
+
+        span {
+            background-color: transparent;
+        }
+    }
+}
+
+// ----- INFOS -----
+
+#prestataires-dispos-calendar-page-form {
+
+    #edit-calendar-wrapper-calendar {
+        position: relative;
+    }
+
+    div.ajax_loading {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: lighten($bg_color, 10%);
+        background-image: image-url('ajax_loading.gif');
+        background-position: center center;
+        background-repeat: no-repeat;
+        @include opacity(0.8);
+        cursor: pointer;
+    }
+
+    #calendar_infos_wrapper {
+        display: none;
+        width: 74%;
+        height: 74%;
+        padding: 36px 1% 1% 1%;
+        border: 1px solid darken($bg_color, 5%);
+        @include border-radius(4px);
+        position: absolute;
+        left: 12%;
+        top: 12%;
+        background-color: lighten($bg_color, 10%);
+        @include box-shadow(4px 4px 4px rgba(#000000, 0.5));
+
+        a#close_infos {
+            display: block;
+            width: 32px;
+            height: 32px;
+            padding: 5px;
+            margin: 0;
+            position: absolute;
+            right: 4px;
+            top: 4px;
+            background-image: image-url('close.png');
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: 75%;
+            background-color: lighten($bg_color, 10%);
+            border-radius: 4px;
+
+            span {
+                display: none;
+            }
+        }
+
+        #calendar_infos {
+            width: 100%;
+            height: 100%;
+            padding: 1%;
+            background-color: lighten($bg_color, 2%);
+            overflow-y: auto;
+
+            h3 {
+                position: absolute;
+                top: 8px;
+                color: darken($typo_color, 10%);
+            }
+
+            .pdispo_type_label {
+                font-weight: bold;
+                font-size: 11pt;
+                font-style: italic;
+                color: $typo_color;
+            }
+
+            .pdispo_updated {
+                font-size: 9pt;
+                margin-bottom: 10px;
+                color: $typo_color;
+            }
+
+            span.pdispos_product_label {
+                color: $typo_color;
+                font-weight: bold;
+            }
+        }
+    }
+}
+
+// ----- LEGEND -----
+
+div.calendar_legend {
+    padding: 2px 4px;
+    border: 1px solid darken($bg_color, 5%);
+    background-color: lighten($bg_color, 3%);
+
+    h3 {
+        font-size: 11pt;
+        padding: 0;
+        margin: 0 0 4px 0;
+    }
+
+    ul.calendar_legends {
+        list-style-type: none;
+        list-style-position: inside;
+
+        li {
+            display: block;
+            float: left;
+            line-height: 16px;
+
+            span.calendar_legend {
+                display: block;
+                float: left;
+                width: 30px;
+                height: 16px;
+                margin-right: 4px;
+                border: 1px solid darken($bg_color, 50%);
+            }
+        }
+    }
+}
+

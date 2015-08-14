@@ -1,0 +1,303 @@
+<?php
+
+function prestataires_permission() {
+    return array(
+        'configure prestataires' => array(
+            'title' => t("Configure module"),
+        ),
+        'administer prestataires' => array(
+            'title' => t("Administer prestataires"),
+            'description' => t("Associate nodes to users."),
+        ),
+    );
+}
+
+function prestataires_menu() {
+    $items = array();
+
+    // ----- MODULE'S SETTINGS -----
+
+    $items['admin/config/prestataires'] = array(
+        'title' => "Prestataires modules",
+        'type' => MENU_NORMAL_ITEM,
+        'access arguments' => array('configure prestataires'),
+        'page callback' => 'system_admin_menu_block_page',
+        'file' => 'system.admin.inc',
+        'file path' => drupal_get_path('module', 'system'),
+        'position' => 'right',
+        'weight' => -30,
+    );
+
+    $items['admin/config/prestataires/settings'] = array(
+        'title' => "Configuration",
+        'description' => "General settings",
+        'type' => MENU_NORMAL_ITEM,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('prestataires_settings_form'),
+        'file' => 'prestataires.admin.inc',
+        'access arguments' => array('configure prestataires'),
+    );
+
+    $items['admin/config/prestataires/settings/general'] = array(
+        'title' => "Configuration",
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'access arguments' => array('configure prestataires'),
+        'weight' => 0,
+    );
+
+    // ----- USER PROFILE FORM -----
+
+    $items['admin/prestataires/node_autocomplete/%'] = array(
+        'title' => "",
+        'type' => MENU_CALLBACK,
+        'page callback' => 'prestataires_user_admin_form_autocomplete',
+        'page arguments' => array(3),
+        'file' => 'prestataires.admin.inc',
+        'access arguments' => array('administer prestataires'),
+    );
+
+    // ----- NODE TAB -----
+
+    $items['node/%node/prestataire'] = array(
+        'title' => "Prestataire",
+        'page callback' => 'prestataires_prestataire_account_tab',
+        'page arguments' => array(1),
+        'access callback' => 'prestataires_prestataire_account_tab_access',
+        'access arguments' => array(1),
+        'type' => MENU_LOCAL_TASK,
+        'weight' => 4,
+    );
+
+    return $items;
+}
+
+/*
+ * Implementation of hook_user_categories()
+ * Add a new local task to user form.
+ */
+function prestataires_user_categories() {
+    return array(
+        array(
+            'name' => "prestataires",
+            'title' => t("Prestataire params"),
+            'access callback' => 'user_access',
+            'access arguments' => array('administer prestataires'),
+            'weight' => 1,
+        ),
+    );
+}
+
+/*
+ * Implementation of hook_menu_alter()
+ * Configure callback for the newly created categorie 'prestataires'
+ * (@see prestataires_user_categories())
+ */
+function prestataires_menu_alter(&$callbacks) {
+    $callbacks['user/%user_category/edit/prestataires']['page arguments'] = array('prestataires_user_admin_form', 1);
+    $callbacks['user/%user_category/edit/prestataires']['file'] = 'prestataires.admin.inc';
+    $callbacks['user/%user_category/edit/prestataires']['file path'] = drupal_get_path('module', 'prestataires');
+}
+
+function prestataires_prestataire_account_tab($node) {
+
+    $uid = prestataires_get_uid_from_node($node);
+    drupal_goto('user/' . $uid, array('language' => language_default()));
+}
+
+function prestataires_prestataire_account_tab_access($node) {
+
+    if(user_access('administer prestataires') == false) {return false;}
+    if(prestataires_get_uid_from_node($node) != false) {return true;}
+
+    return false;
+}
+
+function prestataires_get_uid_from_node($node) {
+
+    $uid = &drupal_static(__FUNCTION__);
+
+    if(empty($uid)) {
+
+        $uid = db_query(
+            "SELECT p.uid FROM {node} AS n
+             LEFT JOIN {prestataires} AS p ON p.nid=n.tnid
+             WHERE n.nid=:nid",
+            array(
+                ':nid' => $node->nid,
+            )
+        )->fetchColumn();
+    }
+
+    return $uid;
+}
+
+/*
+ * Implementation of hook_user_view()
+ */
+function prestataires_user_view($account, $view_mode, $langcode) {
+
+    // DEV : définir un hook afin de récupérer les fonctionnalités des différents sous-modules, pour une présentation plus classe.
+
+    if($view_mode != full) {return;}
+
+    // l'uid par défaut n'a pas forcément envie de voir tous les nodes orphelins sur sa page
+    $settings = variable_get('prestataires', array());
+    if($account->uid == $settings['default_owner']) {return;}
+
+    // (on n'affiche que les nodes qui existent)
+    $results = db_query(
+        "SELECT p.*, n.title FROM {prestataires} AS p
+        LEFT JOIN {node} AS n ON n.nid=p.nid
+        WHERE p.uid=?
+        AND n.nid IS NOT NULL
+        ORDER BY n.title ASC",
+        array(
+            $account->uid,
+        )
+    );
+
+    $nodes = array();
+
+    while($row = $results->fetchObject()) {
+        $nodes[] = l($row->title, drupal_get_path_alias('node/' . $row->nid), array('attributes' => array('target' => "_blank")));
+    }
+
+    $nodes_list = array(
+        'title' => t("Products"),
+        'items' => $nodes,
+        'type' => 'ul',
+    );
+
+    if(empty($nodes)) {return;}
+
+    $account->content['nodes'] = array(
+        '#type' => 'user_profile_item',
+        '#title' => null,
+        '#markup' => theme('item_list', $nodes_list),
+    );
+
+}
+
+/**
+ * Get a single database row in {prestataires} table
+ *
+ * @param type $nid
+ * @param type $uid
+ *
+ * @return mixed : stdClass with unserialized params or false if no match found
+ */
+function prestataires_get_node_definition($nid, $uid = null) {
+
+    $where = "";
+    $args = array(
+        'nid' => $nid,
+        'uid' => $uid,
+    );
+
+    if($uid !== null) {
+        $where = " AND uid=:uid";
+    } else {
+        unset($args['uid']);
+    }
+
+    $prestataire_infos = db_query(
+        "SELECT * FROM {prestataires}
+        WHERE nid=:nid" . $where,
+        $args
+    )->fetchObject();
+
+    if($prestataire_infos == false) {return false;}
+
+    $prestataire_infos->params = unserialize($prestataire_infos->params);
+
+    return $prestataire_infos;
+}
+
+/**
+ * Implementation of hook_node_type_delete()
+ */
+function prestataires_node_type_delete($infos) {
+    // DEV : nettoyer
+}
+
+/*
+ * Implementation of hook_node_delete()
+ */
+function prestataires_node_delete($node) {
+
+    $node_def = prestataires_get_node_definition($node->nid);
+
+    if($node_def == false) {return;}
+
+    db_query("DELETE FROM {prestataires} WHERE uid=? AND nid=?", array(
+        $node_def->uid,
+        $node->nid
+    ));
+
+    $node_def->params['title'] = $node->title;
+    $node_def->params['previous_uid'] = $node_def->uid;
+
+    $settings = variable_get('prestataires', array());
+    $node_def->uid = $settings['default_owner'];
+
+    $node_def->params = serialize($node_def->params);
+    drupal_write_record('prestataires', $node_def);
+}
+
+function prestataires_user_delete($account) {
+
+    $settings = variable_get('prestataires', array());
+
+    $results = db_query("SELECT * FROM {prestataires} WHERE uid=?", array($account->uid));
+
+    while($record = $results->fetchObject()) {
+
+        $record->params = unserialize($record->params);
+
+        $record->uid = $settings['default_owner'];
+        $record->params['previous_uid'] = $account->uid;
+
+        $record->params = serialize($record->params);
+
+        drupal_write_record('prestataires', $record);
+
+        db_query("DELETE FROM {prestataires} WHERE uid=? AND nid=?", array(
+            $account->uid,
+            $record->nid,
+        ));
+    }
+}
+
+function prestataires_get_node_data($nid, $module) {
+
+    $data = db_query("SELECT data FROM {prestataires_nodes_data} WHERE nid=? AND module=?", array($nid, $module))->fetchColumn();
+    return !empty($data) ? unserialize($data) : array();
+}
+
+function prestataires_store_node_data($nid, $module, $data) {
+
+    $existing = prestataires_get_node_data($nid, $module);
+
+    $record = array(
+        'nid' => $nid,
+        'module' => $module,
+        'data' => serialize($data),
+    );
+
+    drupal_write_record('prestataires_nodes_data', $record, !empty($existing) ? array('nid', 'module') : array());
+}
+
+/**
+ * Implements hook_theme().
+ */
+function prestataires_theme() {
+
+    $theme = array(
+        'prestataires_user_admin_form_nodes' => array(
+            'render element' => 'element',
+            'file' => 'prestataires.admin.inc',
+        ),
+    );
+
+    return $theme;
+}

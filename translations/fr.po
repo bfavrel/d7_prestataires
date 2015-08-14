@@ -1,0 +1,117 @@
+# $Id$
+#
+# French translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  prestataires.admin.inc: n/a
+#  prestataires.module: n/a
+#  prestataires.info: n/a
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2014-03-14 09:36+0100\n"
+"PO-Revision-Date: 2014-03-14 09:44+0100\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: French <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n>1);\n"
+"X-Generator: Poedit 1.5.4\n"
+
+#: prestataires.admin.inc:14
+msgid "Nodes owner UID by default"
+msgstr "UID du propriétaire par défaut des nodes"
+
+#: prestataires.admin.inc:22;73
+msgid "Save"
+msgstr "Enregistrer"
+
+#: prestataires.admin.inc:57
+msgid "Associate a node"
+msgstr "Associer un node"
+
+#: prestataires.admin.inc:58
+msgid "(*) : currently owned by '@username'"
+msgstr "(*) : actuellement détenu par '@username'"
+
+#: prestataires.admin.inc:64
+msgid "Add"
+msgstr "Ajouter"
+
+#: prestataires.admin.inc:113
+msgid "deleted node"
+msgstr "node supprimé"
+
+#: prestataires.admin.inc:126
+msgid "Delete"
+msgstr "Supprimer"
+
+#: prestataires.admin.inc:131
+msgid "A tool is currently in development"
+msgstr "Un outil est en cours de développement"
+
+#: prestataires.admin.inc:274
+msgid "Node has been transfered on '@owner' account"
+msgstr "Le node a été transféré sur le compte de '@owner'"
+
+#: prestataires.admin.inc:287
+msgid "Node has been dissociated. Its whole data have been deleted."
+msgstr "Le node a été dissocié. L'ensemble de ses données ont été effacées."
+
+#: prestataires.admin.inc:311
+msgid "Parameters have been saved"
+msgstr "Les paramètres ont été sauvegardés"
+
+#: prestataires.admin.inc:336
+msgid "Title"
+msgstr "Titre"
+
+#: prestataires.module:6
+msgid "Configure module"
+msgstr "Configurer le module"
+
+#: prestataires.module:9
+msgid "Administer prestataires"
+msgstr "Administrer les prestataires"
+
+#: prestataires.module:10
+msgid "Associate nodes to users."
+msgstr "Associer des nodes aux utilisateurs"
+
+#: prestataires.module:70
+msgid "Prestataire params"
+msgstr "Paramètres du prestataire"
+
+#: prestataires.module:121
+msgid "Products"
+msgstr "Produits"
+
+#: prestataires.module:21
+msgid "Prestataires modules"
+msgstr "Modules Prestataires"
+
+#: prestataires.module:32;42
+msgid "Configuration"
+msgstr "Configuration"
+
+#: prestataires.module:33
+msgid "General settings"
+msgstr "Paramètres généraux"
+
+#: prestataires.info:0
+msgid "Prestataires"
+msgstr ""
+
+#: prestataires.info:0
+msgid ""
+"Base module of prestataires suite. Provides ability to associate nodes to "
+"users."
+msgstr ""
+"Module de base de la suite Prestataires. Permet d'associer des nodes aux "
+"utilisateurs."
+
+#: prestataires.info:0
+msgid "Saison d'Or"
+msgstr ""

@@ -1,0 +1,7 @@
+This modules depends on library "Google Analytics PHP Interface (GAPI)".
+(https://github.com/erebusnz/gapi-google-analytics-php-interface)
+
+Don't use the Github version since it's no sure that last version is compatible
+with current module.
+
+Instead, copy './._materiel/gapi' in '/sites/all/libraries'.

@@ -1,0 +1,26 @@
+<?php
+
+function prestataires_analytics_schema() {
+
+    $schema = array();
+
+    $schema['prestataires_analytics_nodes_paths'] = array(
+
+        'fields' => array(
+            'nid' => array(
+                'type' => 'int',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'path' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => true,
+            ),
+        ),
+
+        'primary key' => array('nid', 'path'),
+    );
+
+    return $schema;
+}
