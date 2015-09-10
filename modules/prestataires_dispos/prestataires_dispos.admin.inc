@@ -19,23 +19,23 @@ function prestataires_dispos_general_settings_form($form, &$form_state) {
         'configuration' => array(),
         'nodes_types' => array(),
     ));
-    
+
     $results = db_query("SELECT DISTINCT layer FROM {prestataires_dispos} WHERE layer NOT IN(0,255) ORDER BY layer ASC");
-    
+
     $layers_options = array();
-    
+
     while($row = $results->fetchObject()) {
         $layers_options[$row->layer] = t("layer") . " " . $row->layer;
     }
 
     ksort($layers_options);
-    
+
     if(empty($layers_options)) {
         $layers_description = t("No modules' layer available");
     } else {
         $layers_description = "";
     }
-    
+
     return array(
         '#theme_wrappers' => array('form', 'fieldset'),
         '#title' => t("General settings"),
@@ -46,12 +46,18 @@ function prestataires_dispos_general_settings_form($form, &$form_state) {
             '#default_value' => array_key_exists('display_irrelevant_results_infos', $settings['configuration']) ? $settings['configuration']['display_irrelevant_results_infos'] : false,
         ),
 
+        'hide_dispos_sfa_parents' => array(
+            '#type' => 'checkbox',
+            '#title' => t("Don't display availabilities for SFA parents (if module enabled)"),
+            '#default_value' => array_key_exists('hide_dispos_sfa_parents', $settings['configuration']) ? $settings['configuration']['hide_dispos_sfa_parents'] : false,
+        ),
+
         'debug_mode' => array(
             '#type' => 'checkbox',
             '#title' => t("Debug mode"),
             '#default_value' => array_key_exists('debug_mode', $settings['configuration']) ? $settings['configuration']['debug_mode'] : false,
         ),
-        
+
         'layers_filter' => array(
             '#type' => 'checkboxes',
             '#title' => t("Modules' layers to display in nodes"),
@@ -74,6 +80,7 @@ function prestataires_dispos_general_settings_form_submit($form, &$form_state) {
         'nodes_types' => array(),
     ));
 
+    $settings['configuration']['hide_dispos_sfa_parents'] = $form_state['values']['hide_dispos_sfa_parents'];
     $settings['configuration']['debug_mode'] = $form_state['values']['debug_mode'];
     $settings['configuration']['display_irrelevant_results_infos'] = $form_state['values']['display_irrelevant_results_infos'];
     $settings['configuration']['layers_filter'] = array_filter($form_state['values']['layers_filter']);
