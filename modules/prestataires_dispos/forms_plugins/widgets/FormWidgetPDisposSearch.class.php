@@ -73,6 +73,7 @@ class FormWidgetPDisposSearch extends FormWidgetDatefields
             '#title_display' => 'invisible',
             '#default_value' => $default_value['from'],
             '#process' => array('prestataires_dispos_process_date_popup'),
+            '#attributes' => array('class' => array('has_attribute-size')),
             '#weight' => 0,
         );
 
@@ -84,6 +85,7 @@ class FormWidgetPDisposSearch extends FormWidgetDatefields
             '#title_display' => 'invisible',
             '#default_value' => $default_value['to'],
             '#process' => array('prestataires_dispos_process_date_popup'),
+            '#attributes' => array('class' => array('has_attribute-size')),
             '#weight' => 1,
         );
 
@@ -95,7 +97,8 @@ class FormWidgetPDisposSearch extends FormWidgetDatefields
                 '#field_suffix' => t("people@optionalplurial", array('@optionalplurial' => null)),
                 '#size' => 1,
                 '#default_value' => $default_value['capacity'],
-                '#attributes' => array('placeholder' => "?"),
+                '#attributes' => array('placeholder' => "?", 'class' => array('has_attribute-size')),
+                '#inline' => true,
                 '#weight' => 10,
             );
         }
