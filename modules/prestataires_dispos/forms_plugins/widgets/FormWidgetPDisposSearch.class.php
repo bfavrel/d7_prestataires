@@ -106,7 +106,7 @@ class FormWidgetPDisposSearch extends FormWidgetDatefields
         $element['accuracy'] = array(
             '#type' => 'checkbox',
             '#title' => t("Consecutive availabilities in the whole period"),
-            '#default_value' => $default_value['accuracy'],
+            '#default_value' => array_key_exists('accuracy', $default_value) ? $default_value['accuracy'] : true,
             '#weight' => 20,
         );
 
