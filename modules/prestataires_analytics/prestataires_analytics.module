@@ -93,6 +93,15 @@ function prestataires_analytics_menu() {
     return $items;
 }
 
+function prestataires_analytics_permission() {
+    return array(
+        'view prestataires statistics' => array(
+            'title' => t("View all statistics"),
+            'description' => t("Even if the node in not maintained by Prestataire module"),
+        ),
+    );
+}
+
 /*
  * Implementation of hook_user_categories()
  * Add a new local task to user form.
@@ -136,7 +145,7 @@ function prestataires_analytics_access($uid = null, $account = null, $node = nul
     $settings = variable_get('prestataires_analytics', array());
     if(!array_key_exists('account', $settings)) {return false;}
 
-    if(user_access('administer prestataires') != true) {
+    if(user_access('administer prestataires') != true && user_access('view prestataires statistics') != true) {
 
         if($uid != null && $user->uid != $uid) { // on ne peut voir que les stats de son propre compte
 
@@ -147,37 +156,38 @@ function prestataires_analytics_access($uid = null, $account = null, $node = nul
             // on ne peut voir les stats que de son propre node
             $owner = db_query("SELECT uid FROM {prestataires} WHERE nid=?", array($node->nid))->fetchColumn();
             if($user->uid != $owner) {return false;}
-
         }
-    }
 
-    $args = array();
-    $where = array();
+        $args = array();
+        $where = array();
 
-    if($uid != null) {
-        $where[] = "uid=?";
-        $args[] = $uid;
-    }
-
-    if($node != null) {
-        $where[] = "(nid=? OR nid=?)";
-        $args[] = $node->nid;
-        $args[] = $node->tnid;
-    }
-
-    $where = " " . implode(' AND ', $where);
-
-    $results = db_query("SELECT params FROM {prestataires} WHERE" . $where, $args);
-
-    while($row = $results->fetchObject()) {
-        $params = unserialize($row->params);
-
-        if(array_key_exists('analytics@prestataires_analytics', $params['functionalities']) && $params['functionalities']['analytics@prestataires_analytics'] == true) {
-            return true;
+        if($uid != null) {
+            $where[] = "uid=?";
+            $args[] = $uid;
         }
+
+        if($node != null) {
+            $where[] = "(nid=? OR nid=?)";
+            $args[] = $node->nid;
+            $args[] = $node->tnid;
+        }
+
+        $where = " " . implode(' AND ', $where);
+
+        $results = db_query("SELECT params FROM {prestataires} WHERE" . $where, $args);
+
+        while($row = $results->fetchObject()) {
+            $params = unserialize($row->params);
+
+            if(array_key_exists('analytics@prestataires_analytics', $params['functionalities']) && $params['functionalities']['analytics@prestataires_analytics'] == true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    return false;
+    return true;
 }
 
 function prestataires_analytics_stats_form($form, &$form_state, $uid = null, $node = null) {
@@ -216,6 +226,14 @@ function prestataires_analytics_stats_form($form, &$form_state, $uid = null, $no
                 }
             }
         }
+
+        if(empty($nodes_list)) {
+
+            drupal_set_message(t("No item found for this user."), 'warning');
+            return array(
+                '#id' => 'no_stats',// évite l'affichage du bouton 'Fullscreen' par JQuery.
+            );
+        }
     }
 
     global $user;
@@ -225,7 +243,8 @@ function prestataires_analytics_stats_form($form, &$form_state, $uid = null, $no
 
         if($config['private'] == true
             && !user_access('administer prestataires')
-            && !array_key_exists('3', $user->roles)) { // 3 : 'administrator'
+            && !array_key_exists('3', $user->roles) // 3 : 'administrator'
+            && !user_access('view prestataires statistics')) {
             continue;
         }
 
@@ -525,7 +544,6 @@ function prestataires_analytics_process_filter($stat_param, $stat_config, $nids_
             }
 
             $values = array_merge($values, _prestataires_analytics_gather_field_values($fieldname, $values_nids));
-
         }
 
         if(empty($values)) {
@@ -600,6 +618,19 @@ function _prestataires_analytics_gather_field_values($fieldname, $nids) {
 
             while($row = $results->fetchObject()) {
                 $values[] = $row->path;
+            }
+
+            //dans le cas où le node n'est pas géré par le module Prestataires
+            if(empty($values)) {
+
+                drupal_set_message(t("Since this node isn't maintained by Prestataires module, only statistics matching the current path of the node can be retrieved."), 'warning');
+
+                global $language;
+                $languages = language_list();
+
+                foreach($nids as $nid) {
+                    $values[] = url('node/' . $nid, array('language' => $languages[$language->language]));
+                }
             }
 
             break;
