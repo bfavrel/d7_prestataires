@@ -773,8 +773,6 @@ function prestataires_dispos_save_periods($nid, $input_periods_data) {
 
         foreach($layer as $data) {
 
-            $slice = array();
-
             $infos_id = null;
 
             if(!empty($data['infos'])) {
@@ -801,14 +799,20 @@ function prestataires_dispos_save_periods($nid, $input_periods_data) {
             $dispo_updated[$start_date->format('Y-m-d')] = array_key_exists('dispo_updated', $data) ? $data['dispo_updated'] : $updated;
 
             foreach($period as $date) {
-                $slice[$date->format('Y-m-d')] = array(
-                    'type' => $data['type'],
-                    'layer' => $layer_index,
-                    'infos' => $infos_id,
-                );
-            }
+                $date_in_year = $date->format('Y-m-d');
 
-            $year = array_merge($year, $slice);
+                //Lorsque la période d'entrée empiète sur le passé (autrement dit, lorsqu'elle "sort" de la période définie par le pattern '$year'),
+                //les valeurs inédites sont placées à la fin, par le array_merge(). On se retrouve alors avec une chronologie altérée des indexes,
+                //ce qui provoque le dysfonctionnement de l'algo de génération des 'slices'.
+                //Il faut donc écarter les valeurs hors-pattern.
+                if(array_key_exists($date_in_year, $year)) {
+                    $year[$date_in_year] = array(
+                        'type' => $data['type'],
+                        'layer' => $layer_index,
+                        'infos' => $infos_id,
+                    );
+                }
+            }
         }
     }
 
@@ -1062,9 +1066,9 @@ function prestataires_dispos_node_view($node, $view_mode, $langcode) {
     $node_definition = prestataires_get_node_definition($nid);
 
     if(!empty($node_definition) && $node_definition->params['functionalities']['dispos@prestataires_dispos'] == true) {
-        
+
         if($settings['configuration']['hide_dispos_sfa_parents'] == 1 && module_exists('so_feedsagent')) {
-            
+
             $coupling = so_feedsagent_get_coupled_items_by_nid($nid, 'childs');
             if(!empty($coupling)) {return;}
         }
