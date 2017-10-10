@@ -135,6 +135,15 @@ function prestataires_dispos_menu() {
         'type' => MENU_CALLBACK,
     );
 
+    // ----- NODE DISPOS EXPORT ICALENDAR -----
+    $items['dispos/icalendar/%'] = array( // nid
+        'title' => '',
+        'page callback' => 'prestataires_dispos_export_icalendar',
+        'page arguments' => array(2),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+
     return $items;
 }
 
@@ -205,6 +214,48 @@ function prestataires_dispos_trigger_pdispos_form_submitted($node) {
     actions_do(array_keys($actions), $node, $context);
 }
 
+function prestataires_dispos_export_icalendar($nid) {
+
+    if(!class_exists('ZCiCal')) {
+        require_once drupal_get_path('module', 'prestataires_dispos') . '/lib/icalendar/zapcallib.php';
+    }
+
+    $dispos_types = _prestataires_dispos_get_constants_by_value();
+
+    $ical = new ZCiCal();
+
+    $dtstamp = DateTime::createFromFormat('U', time())->format('Ymd\THis');
+
+    $results = db_query("SELECT * FROM {prestataires_dispos} WHERE nid=? ORDER BY id ASC", array($nid));
+
+    $event = array();
+
+    while($row = $results->fetchObject()) {
+
+        if($row->dispo_type != 3 && $row->dispo_type != 4) {
+            continue;
+        }
+
+        $event = new ZCiCalNode("VEVENT", $ical->curnode);
+        $event->addNode(new ZCiCalDataNode('DTSTART;VALUE=DATE:' . DateTime::createFromFormat('U', $row->start_timestamp)->setTimezone(new DateTimeZone('Europe/Paris'))->format('Ymd')));
+        $event->addNode(new ZCiCalDataNode('DTEND;VALUE=DATE:' . DateTime::createFromFormat('U', $row->end_timestamp)->setTimezone(new DateTimeZone('Europe/Paris'))->format('Ymd')));
+        $event->addNode(new ZCiCalDataNode('SUMMARY:' . $dispos_types[$row->dispo_type]['legend']));
+        $event->addNode(new ZCiCalDataNode('DTSTAMP:' . $dtstamp));
+        $event->addNode(new ZCiCalDataNode('UID:' . $row->id . '-prestataires_dispos@' . $_SERVER['SERVER_NAME']));
+    }
+
+    header("Cache-Control: public");
+    header("Content-Type: text/calendar; charset=utf-8");
+    header("Cache-Control: no-store, no-cache, must-revalidate");
+    header("Cache-Control: post-check=0, pre-check=0");
+    header("Content-Disposition: attachment; filename=\"dispos_" . $nid . ".ics\";" );
+    header("Content-Transfer-Encoding: binary");
+
+    print($ical->export());
+
+    drupal_exit();
+}
+
 function prestataires_dispos_node_form($form, &$form_state, $node, $date = '') {
 
     $settings = variable_get('prestataires_dispos_settings', array());
@@ -233,6 +284,8 @@ function prestataires_dispos_node_form($form, &$form_state, $node, $date = '') {
         $dispo_type = PDISPOS_UNDEFINED;
     }
 
+    $export_url = url('dispos/icalendar/' . $node->nid, array('absolute' => true));
+
     $form = array(
         '#tree' => true,
 
@@ -246,6 +299,12 @@ function prestataires_dispos_node_form($form, &$form_state, $node, $date = '') {
                 $module_path . '/scripts/moment.min.js',
                 $module_path . '/scripts/prestataires_dispos.admin.js',
             ),
+        ),
+
+        'download_link' => array(
+            '#prefix' => '<div class="pdispos-export-wrapper">',
+            '#suffix' => '</div>',
+            '#markup' => "<span class='label'>" . t("Download data in iCalendar format") . " : </span>" . l($export_url, $export_url),
         ),
 
         'calendar' => array(

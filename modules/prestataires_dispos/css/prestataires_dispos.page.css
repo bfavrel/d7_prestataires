@@ -11,7 +11,7 @@ div.datepicker td { padding: 1px 0 0 0; margin: 0; text-align: center; }
 div.datepicker td a span { display: block; width: 28px; }
 div.datepicker td.today a { color: #ff6666; font-weight: bold; font-size: 1.2em; }
 div.datepicker td.datepickerSelected { background-color: white; }
-div.datepicker td.datepickerSelected a, div.datepicker td.datepickerSelected a span { color: red !important; }
+div.datepicker td.datepickerSelected a, div.datepicker td.datepickerSelected a span { color: #ff0000 !important; }
 div.datepicker td.datepickerNotInMonth { filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=33); opacity: 0.33; background-color: transparent; background-image: none; }
 div.datepicker td.datepickerNotInMonth a, div.datepicker td.datepickerNotInMonth a span { color: #666666 !important; }
 div.datepicker td.datepickerDisabled { filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=33); opacity: 0.33; }
@@ -43,21 +43,21 @@ div.datepicker table.datepickerViewYears tbody.datepickerDays, div.datepicker ta
 
 .pdispos_closed a span { color: #ffffff; }
 
-.pdispos_infos_unique { background-image: url('../images/infos_unique.png?1394526261'); background-position: center top; background-repeat: no-repeat; }
+.pdispos_infos_unique { background-image: url('../images/infos_unique.png?1444903921'); background-position: center top; background-repeat: no-repeat; }
 
-.pdispos_infos_start { background-image: url('../images/infos_start.png?1394525669'); background-position: left top; background-repeat: no-repeat; }
+.pdispos_infos_start { background-image: url('../images/infos_start.png?1444903921'); background-position: left top; background-repeat: no-repeat; }
 
-.pdispos_infos { background-image: url('../images/infos.png?1394525710'); background-position: left top; background-repeat: repeat-x; }
+.pdispos_infos { background-image: url('../images/infos.png?1444903921'); background-position: left top; background-repeat: repeat-x; }
 
-.pdispos_infos_end { background-image: url('../images/infos_end.png?1394525748'); background-position: right top; background-repeat: no-repeat; }
+.pdispos_infos_end { background-image: url('../images/infos_end.png?1444903921'); background-position: right top; background-repeat: no-repeat; }
 
 div.datepicker th.datepickerWeek a:hover { cursor: default; color: #666666; }
 div.datepicker th.datepickerWeek a:hover span { background-color: transparent; }
 
 #prestataires-dispos-calendar-page-form #edit-calendar-wrapper-calendar { position: relative; }
-#prestataires-dispos-calendar-page-form div.ajax_loading { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background-color: white; background-image: url('../images/ajax_loading.gif?1394618718'); background-position: center center; background-repeat: no-repeat; filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=80); opacity: 0.8; cursor: pointer; }
+#prestataires-dispos-calendar-page-form div.ajax_loading { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background-color: white; background-image: url('../images/ajax_loading.gif?1444903921'); background-position: center center; background-repeat: no-repeat; filter: progid:DXImageTransform.Microsoft.Alpha(Opacity=80); opacity: 0.8; cursor: pointer; }
 #prestataires-dispos-calendar-page-form #calendar_infos_wrapper { display: none; width: 74%; height: 74%; padding: 36px 1% 1% 1%; border: 1px solid #e1e1e1; -moz-border-radius: 4px; -webkit-border-radius: 4px; border-radius: 4px; position: absolute; left: 12%; top: 12%; background-color: white; -moz-box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.5); -webkit-box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.5); box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.5); }
-#prestataires-dispos-calendar-page-form #calendar_infos_wrapper a#close_infos { display: block; width: 32px; height: 32px; padding: 5px; margin: 0; position: absolute; right: 4px; top: 4px; background-image: url('../images/close.png?1394622524'); background-position: center center; background-repeat: no-repeat; background-size: 75%; background-color: white; border-radius: 4px; }
+#prestataires-dispos-calendar-page-form #calendar_infos_wrapper a#close_infos { display: block; width: 32px; height: 32px; padding: 5px; margin: 0; position: absolute; right: 4px; top: 4px; background-image: url('../images/close.png?1444903921'); background-position: center center; background-repeat: no-repeat; background-size: 75%; background-color: white; border-radius: 4px; }
 #prestataires-dispos-calendar-page-form #calendar_infos_wrapper a#close_infos span { display: none; }
 #prestataires-dispos-calendar-page-form #calendar_infos_wrapper #calendar_infos { width: 100%; height: 100%; padding: 1%; background-color: #f3f3f3; overflow-y: auto; }
 #prestataires-dispos-calendar-page-form #calendar_infos_wrapper #calendar_infos h3 { position: absolute; top: 8px; color: #4d4d4d; }
@@ -69,4 +69,4 @@ div.calendar_legend { padding: 2px 4px; border: 1px solid #e1e1e1; background-co
 div.calendar_legend h3 { font-size: 11pt; padding: 0; margin: 0 0 4px 0; }
 div.calendar_legend ul.calendar_legends { list-style-type: none; list-style-position: inside; }
 div.calendar_legend ul.calendar_legends li { display: block; float: left; line-height: 16px; }
-div.calendar_legend ul.calendar_legends li span.calendar_legend { display: block; float: left; width: 30px; height: 16px; margin-right: 4px; border: 1px solid #6e6e6e; }
+div.calendar_legend ul.calendar_legends li span.calendar_legend { display: block; float: left; width: 30px; height: 16px; margin-right: 4px; border: 1px solid #6f6f6f; }

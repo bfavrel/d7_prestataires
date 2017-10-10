@@ -7,158 +7,164 @@
 // ----- DISPOS COLORS -----
 
 .pdispos_undefined {
-    background-color: #dddddd;
+  background-color: #dddddd;
 }
 .pdispos_undefined a span {}
 
 .pdispos_free {
-    background-color: #66ff66;
+  background-color: #66ff66;
 }
 .pdispos_free a span {}
 
 .pdispos_some {
-    background-color: #ffbb66;
+  background-color: #ffbb66;
 }
 .pdispos_some a span {
-    color: #ffffff;
+  color: #ffffff;
 }
 
 .pdispos_full {
-    background-color: #ff6666;
+  background-color: #ff6666;
 }
 .pdispos_full a span {
-    color: #ffffff;
+  color: #ffffff;
 }
 
 .pdispos_closed {
-    background-color: #666666;
+  background-color: #666666;
 }
 .pdispos_closed a span {
-    color: #ffffff;
+  color: #ffffff;
 }
 
 // ----- INFOS CLASSES -----
 
 .pdispos_infos_unique {
-    background-image: image-url('infos_unique.png');
-    background-position: center top;
-    background-repeat: no-repeat;
+  background-image: image-url('infos_unique.png');
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 .pdispos_infos_start {
-    background-image: image-url('infos_start.png');
-    background-position: left top;
-    background-repeat: no-repeat;
+  background-image: image-url('infos_start.png');
+  background-position: left top;
+  background-repeat: no-repeat;
 }
 .pdispos_infos {
-    background-image: image-url('infos.png');
-    background-position: left top;
-    background-repeat: repeat-x;
+  background-image: image-url('infos.png');
+  background-position: left top;
+  background-repeat: repeat-x;
 }
 .pdispos_infos_end {
-    background-image: image-url('infos_end.png');
-    background-position: right top;
-    background-repeat: no-repeat;
+  background-image: image-url('infos_end.png');
+  background-position: right top;
+  background-repeat: no-repeat;
 }
 
 // ----- NODE FORM -----
 
 #prestataires-dispos-node-form {
 
-    fieldset#edit-data-period {
-        position: relative;
-    }
+  .pdispos-export-wrapper {
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-size: 14px;
+  }
 
-    #edit-data-infos, #edit-availability-type {
-        position: relative;
-    }
+  fieldset#edit-data-period {
+    position: relative;
+  }
 
-    .date_label {
-        font-weight: bold;
-    }
+  #edit-data-infos, #edit-availability-type {
+    position: relative;
+  }
 
-    #date_advice {
-        display: none;
-        position: absolute;
-        top: 9px;
-        right: 8px;
-        font-style: italic;
-    }
+  .date_label {
+    font-weight: bold;
+  }
 
-    .form-item-data-pin-infos {
+  #date_advice {
+    display: none;
+    position: absolute;
+    top: 9px;
+    right: 8px;
+    font-style: italic;
+  }
+
+  .form-item-data-pin-infos {
+    display: block;
+    text-align: center;
+  }
+
+  .form-item-data-type {
+    margin: 0;
+
+    .form-item {
+      float: left;
+      width: 19%;
+      margin-right: 1%;
+
+      label {
         display: block;
-        text-align: center;
-    }
+        padding: 2px;
+        cursor: pointer;
+        font-size: 9pt;
 
-    .form-item-data-type {
-        margin: 0;
-
-        .form-item {
-            float: left;
-            width: 19%;
-            margin-right: 1%;
-
-            label {
-                display: block;
-                padding: 2px;
-                cursor: pointer;
-                font-size: 9pt;
-
-                span {
-                    padding: 0 8px;
-                    margin-right: 4px;
-                    border: 1px solid darken($bg_color, 50%);
-                }
-            }
-
-            label.selected {
-                background-position: center center;
-                background-repeat: no-repeat;
-                background-color: darken($bg_color, 5%);
-                outline: 1px solid $bg_color;
-
-                span {
-                    background-image: image-url('checked.png');
-                }
-            }
+        span {
+          padding: 0 8px;
+          margin-right: 4px;
+          border: 1px solid darken($bg_color, 50%);
         }
+      }
 
-        input.form-radio {
-            display: none;
-        }
-    }
-
-    .so_forms_pdispos_pdispos_product {
-        padding: 5px;
-        margin-bottom: 5px;
-        border: 1px solid darken($bg_color, 5%);
-        background-color: lighten($bg_color, 3%);
-
-        .form-item {
-            float: left;
-            margin: 5px 10px 0 0;
-        }
-    }
-
-    .pdispos_product_label {
-        font-size: 11pt;
-    }
-
-    .submit {
-        margin: 10px 0;
-    }
-
-    div.ajax_loading {
-        display: none;
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: lighten($bg_color, 10%);
-        background-image: image-url('ajax_loading.gif');
+      label.selected {
         background-position: center center;
         background-repeat: no-repeat;
-        @include opacity(0.8);
+        background-color: darken($bg_color, 5%);
+        outline: 1px solid $bg_color;
+
+        span {
+          background-image: image-url('checked.png');
+        }
+      }
     }
+
+    input.form-radio {
+      display: none;
+    }
+  }
+
+  .so_forms_pdispos_pdispos_product {
+    padding: 5px;
+    margin-bottom: 5px;
+    border: 1px solid darken($bg_color, 5%);
+    background-color: lighten($bg_color, 3%);
+
+    .form-item {
+      float: left;
+      margin: 5px 10px 0 0;
+    }
+  }
+
+  .pdispos_product_label {
+    font-size: 11pt;
+  }
+
+  .submit {
+    margin: 10px 0;
+  }
+
+  div.ajax_loading {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: lighten($bg_color, 10%);
+    background-image: image-url('ajax_loading.gif');
+    background-position: center center;
+    background-repeat: no-repeat;
+    @include opacity(0.8);
+  }
 }
 
